@@ -9,26 +9,26 @@
       }
     },
     {
-      "src": "Backend/app/main.py",
+      "src": "api/index.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "Backend/app/main.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/docs",
-      "dest": "Backend/app/main.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/openapi.json",
-      "dest": "Backend/app/main.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/health",
-      "dest": "Backend/app/main.py"
+      "dest": "api/index.py"
     },
     {
       "handle": "filesystem"

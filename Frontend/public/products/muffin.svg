@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <rect width="200" height="200" fill="#FFFDF9" rx="20"/>
+  <path d="M 65 110 L 135 110 L 125 150 L 75 150 Z" fill="#CFD989" stroke="#734F2F" stroke-width="4"/>
+  <path d="M 55 110 C 55 70, 145 70, 145 110 Z" fill="#9E6B38" stroke="#734F2F" stroke-width="5"/>
+  <circle cx="85" cy="85" r="5" fill="#4B306A"/>
+  <circle cx="115" cy="80" r="6" fill="#4B306A"/>
+  <circle cx="100" cy="95" r="5" fill="#4B306A"/>
+  <circle cx="130" cy="92" r="4" fill="#4B306A"/>
+  <text x="100" y="175" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="14" fill="#734F2F">Muffin Arándano</text>
+</svg>

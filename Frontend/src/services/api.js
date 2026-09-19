@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+
+
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -47,8 +49,37 @@ export const userService = {
   },
 
   // Fetch Google Wallet Pass Link
-  getGoogleWalletPass: async (userId) => {
-    const response = await apiClient.get(`/users/${userId}/wallet/google`);
+  getGoogleWalletPass: async (userIdOrCode) => {
+    try {
+      const response = await apiClient.get(`/users/${encodeURIComponent(userIdOrCode)}/wallet/google`);
+      return response.data;
+    } catch (err) {
+      const response = await apiClient.get(`/users/loyalty/${encodeURIComponent(userIdOrCode)}/wallet/google`);
+      return response.data;
+    }
+  },
+
+
+  // Fetch customer transaction and redemption history
+  getUserTransactions: async (userId) => {
+    const response = await apiClient.get(`/users/${userId}/transactions`);
+    return response.data;
+  }
+};
+
+export const productService = {
+  // Get list of reward products
+  getProducts: async () => {
+    const response = await apiClient.get('/products/');
+    return response.data;
+  },
+
+  // Redeem product using points
+  redeemProduct: async (userId, productId) => {
+    const response = await apiClient.post('/products/redeem', {
+      user_id: userId,
+      product_id: productId
+    });
     return response.data;
   }
 };

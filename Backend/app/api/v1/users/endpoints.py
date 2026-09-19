@@ -120,3 +120,17 @@ def delete_user(
 ):
     service.delete_user(user_id, soft_delete=not hard_delete)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/{user_id}/transactions",
+    summary="Get customer transaction history",
+    description="Retrieve list of points transactions and reward redemptions for a single customer."
+)
+@limiter.limit("60/minute")
+def get_user_transactions(
+    request: Request,
+    user_id: str,
+    service: UserService = Depends(get_user_service)
+):
+    return service.get_user_transactions(user_id)

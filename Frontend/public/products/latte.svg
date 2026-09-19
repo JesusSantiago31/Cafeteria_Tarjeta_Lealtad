@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <rect width="200" height="200" fill="#F4F8F1" rx="20"/>
+  <rect x="70" y="45" width="60" height="105" rx="8" fill="rgba(255,255,255,0.7)" stroke="#788C5A" stroke-width="4"/>
+  <rect x="73" y="85" width="54" height="60" rx="4" fill="#C69255"/>
+  <rect x="73" y="65" width="54" height="20" fill="#EAD5C3"/>
+  <path d="M 85 45 L 80 15 L 90 15 L 95 45 Z" fill="#E2A03F"/>
+  <circle cx="100" cy="115" r="14" fill="#788C5A" opacity="0.3"/>
+  <text x="100" y="175" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="14" fill="#734F2F">Iced Latte</text>
+</svg>

@@ -1,34 +1,48 @@
 import React from 'react';
-import { Coffee, Users, QrCode, ShieldCheck } from 'lucide-react';
+import { Coffee, QrCode, ShieldAlert, Users, Search, Lock } from 'lucide-react';
 
-export const Navbar = ({ activeTab, setActiveTab }) => {
+export const Navbar = ({ currentPath, navigateTo }) => {
   return (
-    <header className="navbar">
-      <div className="navbar-inner">
-        <a href="#" className="brand-logo">
-          <Coffee size={28} color="#D4A373" />
-          <span>CAFETERÍA GOURMET</span>
-          <span className="brand-badge">LEALTAD & POS</span>
-        </a>
+    <>
+      {/* Header Superior Móvil */}
+      <header className="mobile-header">
+        <div className="mobile-brand" onClick={() => navigateTo('/')} style={{ cursor: 'pointer' }}>
+          <div className="brand-icon">
+            <Coffee size={22} />
+          </div>
+          <div>
+            <div className="brand-title">Café Lealtad</div>
+            <div className="brand-sub">Sistema de Monedero</div>
+          </div>
+        </div>
+      </header>
 
-        <nav className="nav-tabs">
-          <button
-            className={`nav-tab ${activeTab === 'admin' ? 'active' : ''}`}
-            onClick={() => setActiveTab('admin')}
-          >
-            <Users size={18} />
-            <span>Administración Clientes</span>
-          </button>
+      {/* Barra de Navegación Inferior con Rutas Fijas */}
+      <nav className="bottom-nav">
+        <button
+          className={`bottom-nav-item ${currentPath === '/' || currentPath === '/pos' ? 'active' : ''}`}
+          onClick={() => navigateTo('/')}
+        >
+          <Search size={22} />
+          <span>Caja POS</span>
+        </button>
 
-          <button
-            className={`nav-tab ${activeTab === 'pos' ? 'active' : ''}`}
-            onClick={() => setActiveTab('pos')}
-          >
-            <QrCode size={18} />
-            <span>Escanear QR en Caja (POS)</span>
-          </button>
-        </nav>
-      </div>
-    </header>
+        <button
+          className={`bottom-nav-item ${currentPath === '/cliente' || currentPath === '/registro' ? 'active' : ''}`}
+          onClick={() => navigateTo('/cliente')}
+        >
+          <QrCode size={22} />
+          <span>Portal Cliente</span>
+        </button>
+
+        <button
+          className={`bottom-nav-item ${currentPath === '/admin' ? 'active' : ''}`}
+          onClick={() => navigateTo('/admin')}
+        >
+          <Lock size={22} />
+          <span>Administración</span>
+        </button>
+      </nav>
+    </>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, UserPlus, QrCode, Edit, Trash2, Award, RefreshCw, Users, Coffee } from 'lucide-react';
+import { UserPlus, QrCode, Edit, Trash2, Award, RefreshCw, Users, ShieldAlert } from 'lucide-react';
 import { userService } from '../services/api';
 import { CustomerModal } from '../components/CustomerModal';
 import { CustomerForm } from '../components/CustomerForm';
@@ -9,8 +9,8 @@ export const AdminView = () => {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null); // For QR/Wallet Modal
-  const [formUser, setFormUser] = useState(null); // For edit
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [formUser, setFormUser] = useState(null);
   const [showFormModal, setShowFormModal] = useState(false);
 
   const fetchUsers = async () => {
@@ -24,7 +24,7 @@ export const AdminView = () => {
       setUsers(response.items || []);
       setTotal(response.total || 0);
     } catch (err) {
-      console.error("Error loading users:", err);
+      console.error("Error al cargar clientes:", err);
     } finally {
       setLoading(false);
     }
@@ -49,84 +49,87 @@ export const AdminView = () => {
   };
 
   return (
-    <div>
-      {/* Top Metrics Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.25rem' }}>
-          <div style={{ background: '#F1E9E0', padding: '0.85rem', borderRadius: '12px', color: '#2C1810' }}>
-            <Users size={26} />
-          </div>
+    <div className="container" style={{ maxWidth: '700px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+        <ShieldAlert size={22} color="#788C5A" />
+        <h2 style={{ margin: 0 }}>Gestión de Clientes (Admin)</h2>
+      </div>
+      <p style={{ fontSize: '0.8rem', color: '#734F2F', textAlign: 'center', marginBottom: '16px', opacity: 0.85 }}>
+        Módulo administrativo protegido para el control del directorio, alta de clientes y auditoría.
+      </p>
+
+      {/* Tarjetas de Métricas Breves */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+        <div className="card-client" style={{ margin: 0, padding: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Users size={24} color="#788C5A" />
           <div>
-            <span style={{ fontSize: '0.82rem', color: '#786C65', fontWeight: 600, display: 'block' }}>TOTAL CLIENTES</span>
-            <span style={{ fontSize: '1.6rem', fontWeight: 800, color: '#2C1810' }}>{total}</span>
+            <span style={{ fontSize: '0.7rem', color: '#734F2F', opacity: 0.8, fontWeight: 700, display: 'block' }}>TOTAL CLIENTES</span>
+            <span style={{ fontSize: '1.4rem', fontWeight: 800, color: '#734F2F' }}>{total}</span>
           </div>
         </div>
 
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.25rem' }}>
-          <div style={{ background: '#FEF6E4', padding: '0.85rem', borderRadius: '12px', color: '#B47B16' }}>
-            <Award size={26} />
-          </div>
+        <div className="card-client" style={{ margin: 0, padding: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Award size={24} color="#E2A03F" />
           <div>
-            <span style={{ fontSize: '0.82rem', color: '#786C65', fontWeight: 600, display: 'block' }}>SISTEMA DE LEALTAD</span>
-            <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#2C1810' }}>Google Wallet & QR</span>
+            <span style={{ fontSize: '0.7rem', color: '#734F2F', opacity: 0.8, fontWeight: 700, display: 'block' }}>FIDELIZACIÓN</span>
+            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#788C5A' }}>Activo 24/7</span>
           </div>
         </div>
       </div>
 
-      {/* Controls Bar */}
-      <div className="controls-bar">
-        <div className="search-box">
-          <Search size={18} className="search-icon" />
+      {/* Controles de Búsqueda y Botón de Alta */}
+      <div className="form-group">
+        <label>Buscar en el Directorio</label>
+        <div style={{ position: 'relative' }}>
           <input
             type="text"
-            placeholder="Buscar por nombre, correo o código QR..."
+            placeholder="Por nombre o número de teléfono..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button className="btn btn-outline" onClick={fetchUsers} disabled={loading}>
-            <RefreshCw size={18} className={loading ? "spin" : ""} />
-            <span>Actualizar</span>
-          </button>
-
-          <button
-            className="btn btn-accent"
-            onClick={() => {
-              setFormUser(null);
-              setShowFormModal(true);
-            }}
-          >
-            <UserPlus size={18} />
-            <span>Nuevo Cliente</span>
-          </button>
-        </div>
       </div>
 
-      {/* Customers Data Table */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+        <button className="btn btn-outline" style={{ flex: 1 }} onClick={fetchUsers} disabled={loading}>
+          <RefreshCw size={16} className={loading ? "spin" : ""} />
+          <span>Actualizar</span>
+        </button>
+
+        <button
+          className="btn btn-primary"
+          style={{ flex: 1 }}
+          onClick={() => {
+            setFormUser(null);
+            setShowFormModal(true);
+          }}
+        >
+          <UserPlus size={16} />
+          <span>Nuevo Cliente</span>
+        </button>
+      </div>
+
+      {/* Tabla de Clientes Responsiva */}
       <div className="table-responsive">
         <table className="data-table">
           <thead>
             <tr>
               <th>Cliente</th>
               <th>Teléfono</th>
-              <th>Código QR Lealtad</th>
-              <th>Puntos Actuales</th>
-              <th>Histórico Ganado</th>
-              <th style={{ textAlign: 'right' }}>Acciones & Pase Digital</th>
+              <th>Puntos</th>
+              <th style={{ textAlign: 'right' }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading && users.length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: '#786C65' }}>
+                <td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: '#734F2F' }}>
                   Cargando clientes...
                 </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: '#786C65' }}>
+                <td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: '#734F2F' }}>
                   No se encontraron clientes registrados.
                 </td>
               </tr>
@@ -134,53 +137,48 @@ export const AdminView = () => {
               users.map((user) => (
                 <tr key={user.id}>
                   <td>
-                    <div style={{ fontWeight: 700, color: '#2C1810' }}>
+                    <div style={{ fontWeight: 800, color: '#734F2F' }}>
                       {user.first_name} {user.last_name}
                     </div>
-                    <div style={{ fontSize: '0.82rem', color: '#786C65' }}>{user.email}</div>
-                  </td>
-                  <td>{user.phone || 'N/A'}</td>
-                  <td>
-                    <span className="badge-code">{user.loyalty_code}</span>
                   </td>
                   <td>
-                    <span className="badge-points">
-                      <Award size={14} />
-                      {user.current_points} Pts
+                    <div style={{ fontWeight: 700, color: '#734F2F' }}>{user.phone || 'Sin teléfono'}</div>
+                  </td>
+                  <td>
+                    <span className="badge badge-success" style={{ background: '#CFD989', color: '#734F2F' }}>
+                      {user.current_points} pts
                     </span>
                   </td>
-                  <td>{user.total_points_earned} Pts</td>
                   <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'inline-flex', gap: '0.5rem' }}>
+                    <div style={{ display: 'inline-flex', gap: '4px' }}>
                       <button
-                        className="btn btn-accent"
-                        style={{ padding: '0.45rem 0.85rem', fontSize: '0.82rem' }}
-                        title="Ver Código QR y Pase de Google Wallet"
+                        className="btn btn-primary"
+                        style={{ width: 'auto', padding: '6px 10px', fontSize: '0.75rem' }}
+                        title="Ver Pase Digital Google Wallet"
                         onClick={() => setSelectedUser(user)}
                       >
-                        <QrCode size={16} />
-                        <span>QR & Wallet</span>
+                        <QrCode size={14} />
                       </button>
 
                       <button
                         className="btn btn-outline"
-                        style={{ padding: '0.45rem 0.65rem' }}
+                        style={{ width: 'auto', padding: '6px 10px', fontSize: '0.75rem' }}
                         title="Editar Datos"
                         onClick={() => {
                           setFormUser(user);
                           setShowFormModal(true);
                         }}
                       >
-                        <Edit size={16} />
+                        <Edit size={14} />
                       </button>
 
                       <button
                         className="btn btn-danger"
-                        style={{ padding: '0.45rem 0.65rem' }}
-                        title="Desactivar Cliente"
+                        style={{ width: 'auto', padding: '6px 10px', fontSize: '0.75rem' }}
+                        title="Desactivar"
                         onClick={() => handleDeactivate(user)}
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </td>
@@ -191,12 +189,12 @@ export const AdminView = () => {
         </table>
       </div>
 
-      {/* Customer QR & Google Wallet Modal */}
+      {/* Modal de Pase Digital QR */}
       {selectedUser && (
         <CustomerModal user={selectedUser} onClose={() => setSelectedUser(null)} />
       )}
 
-      {/* Customer Form Modal */}
+      {/* Modal de Formulario de Cliente */}
       {showFormModal && (
         <CustomerForm
           customerToEdit={formUser}

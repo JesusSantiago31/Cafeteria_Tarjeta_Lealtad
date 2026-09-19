@@ -22,6 +22,7 @@ class Settings(BaseSettings):
 
     # CORS Origins (comma separated in env or list)
     BACKEND_CORS_ORIGINS: Union[List[str], str] = [
+        "*",
         "http://localhost:3000",
         "http://localhost:5173",
         "http://localhost:8000",
@@ -29,6 +30,7 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
         "http://127.0.0.1:8000",
     ]
+
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
@@ -46,13 +48,15 @@ class Settings(BaseSettings):
 
     # Google Wallet Configuration
     GOOGLE_ISSUER_ID: str = ""
+    GOOGLE_CLASS_ID: str = ""
     GOOGLE_CLIENT_EMAIL: str = ""
     GOOGLE_PRIVATE_KEY: str = ""
     CAFETERIA_NAME: str = "Cafetería Gourmet"
     CAFETERIA_SUBHEADER: str = "Tarjeta VIP de Lealtad"
-    CAFETERIA_BG_COLOR: str = "#2C1810"
+    CAFETERIA_BG_COLOR: str = "#69B07E"
     CAFETERIA_LOGO_URL: str = "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400&q=80"
     CAFETERIA_HERO_IMAGE_URL: str = "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1000&q=80"
+
 
 
 

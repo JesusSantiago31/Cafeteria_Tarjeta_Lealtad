@@ -5,8 +5,8 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserBase(BaseModel):
-    first_name: str = Field(..., min_length=1, max_length=100, description="Customer's first name")
-    last_name: str = Field(..., min_length=1, max_length=100, description="Customer's last name")
+    first_name: str = Field(..., min_length=1, max_length=150, description="Customer's full name")
+    last_name: Optional[str] = Field(default="", max_length=100, description="Customer's last name (optional)")
     email: EmailStr = Field(..., description="Unique customer email address")
     phone: Optional[str] = Field(None, max_length=20, description="Customer's phone number")
 
@@ -20,11 +20,16 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseModel):
-    first_name: Optional[str] = Field(None, min_length=1, max_length=100)
-    last_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    first_name: Optional[str] = Field(None, min_length=1, max_length=150)
+    last_name: Optional[str] = Field(default="", max_length=100)
+
     email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, max_length=20)
     is_active: Optional[bool] = None
+    current_points: Optional[int] = None
+    total_points_earned: Optional[int] = None
+    total_points_spent: Optional[int] = None
+    total_purchases_count: Optional[int] = None
 
 
 class UserPointsUpdate(BaseModel):

@@ -16,17 +16,31 @@ class GoogleWalletService:
 
     def generate_pass_for_user(self, user: dict) -> GoogleWalletPassResponse:
         """
-        Generate a signed Google Wallet Loyalty Pass link for a given customer profile.
+        Generate a signed Google Wallet Loyalty Pass link matching exact front card layout structure.
         """
-        user_id = str(user["id"])
-        loyalty_code = user["loyalty_code"]
-        full_name = f"{user['first_name']} {user['last_name']}"
+        import re
+        user_id = str(user.get("id", "guest"))
+        phone_raw = str(user.get("phone") or user.get("loyalty_code") or user_id)
+        phone_clean = re.sub(r'\D', '', phone_raw)
+        
+        full_name = f"{user.get('first_name', 'Cliente')} {user.get('last_name', '')}".strip()
         points = user.get("current_points", 0)
         purchases_count = user.get("total_purchases_count", 0)
         total_earned = user.get("total_points_earned", 0)
 
-        pass_id = f"{self.issuer_id}.user_{user_id.replace('-', '_')}"
-        class_id = f"{self.issuer_id}.cafeteria_pass_class"
+        # Object ID format matching gen_v6_ convention
+        if phone_clean:
+            pass_id = f"{self.issuer_id}.gen_v6_{phone_clean}"
+        else:
+            pass_id = f"{self.issuer_id}.gen_v6_{user_id.replace('-', '_')}"
+
+        raw_class_id = settings.GOOGLE_CLASS_ID or "cafeteria_generic_v6"
+        if "." in raw_class_id:
+            class_id = raw_class_id
+        else:
+            class_id = f"{self.issuer_id}.{raw_class_id}"
+
+
 
         # Build Generic Class Definition (Card template)
         generic_class: Dict[str, Any] = {
@@ -38,7 +52,7 @@ class GoogleWalletService:
                 "contentDescription": {
                     "defaultValue": {
                         "language": "es-419",
-                        "value": f"Logo de {settings.CAFETERIA_NAME}"
+                        "value": "Logo"
                     }
                 }
             },
@@ -53,9 +67,13 @@ class GoogleWalletService:
                     "language": "es-419",
                     "value": settings.CAFETERIA_SUBHEADER
                 }
-            },
-            "hexBackgroundColor": settings.CAFETERIA_BG_COLOR
+            }
         }
+
+        # Sync Class template to Google Pay Cloud database
+        self._sync_class_definition(generic_class)
+
+
 
         if settings.CAFETERIA_HERO_IMAGE_URL:
             generic_class["heroImage"] = {
@@ -65,12 +83,13 @@ class GoogleWalletService:
                 "contentDescription": {
                     "defaultValue": {
                         "language": "es-419",
-                        "value": "Portada de Cafetería"
+                        "value": "Banner"
                     }
                 }
             }
 
-        # Build Generic Object Instance (Specific customer pass)
+
+        # Build Generic Object Instance
         generic_object: Dict[str, Any] = {
             "id": pass_id,
             "classId": class_id,
@@ -85,48 +104,54 @@ class GoogleWalletService:
                 }
             },
             "hexBackgroundColor": settings.CAFETERIA_BG_COLOR,
+            "heroImage": generic_class.get("heroImage"),
             "textModulesData": [
-
                 {
-                    "id": "points_balance",
+                    "id": "puntos_disponibles",
                     "header": "PUNTOS DISPONIBLES",
-                    "body": f"{points} Pts"
+                    "body": str(points)
                 },
                 {
-                    "id": "purchases_count",
+                    "id": "compras_realizadas",
                     "header": "COMPRAS REALIZADAS",
-                    "body": f"{purchases_count} Compras"
+                    "body": str(purchases_count)
                 },
                 {
-                    "id": "total_earned",
-                    "header": "PUNTOS GANADOS HISTÓRICOS",
+                    "id": "puntos_historicos",
+                    "header": "PUNTOS HISTÓRICOS",
                     "body": f"{total_earned} Pts"
                 },
                 {
-                    "id": "loyalty_code_label",
+                    "id": "codigo_cliente",
                     "header": "CÓDIGO DE CLIENTE",
-                    "body": loyalty_code
+                    "body": f"CEL-{phone_raw}"
                 }
             ],
             "barcode": {
                 "type": "QR_CODE",
-                "value": loyalty_code,
-                "alternateText": loyalty_code
+                "value": phone_raw,
+                "alternateText": phone_raw
             }
         }
 
-        # Build JWT Payload
+        # Build JWT Payload matching user exact snippet structure
         now = int(time.time())
         claims = {
             "iss": self.client_email,
             "aud": "google",
+            "origins": [],
             "typ": "savetowallet",
             "iat": now,
             "payload": {
-                "genericClasses": [generic_class],
+                "genericClasses": [
+                    {
+                        "id": class_id
+                    }
+                ],
                 "genericObjects": [generic_object]
             }
         }
+
 
         is_mock = False
         jwt_token = ""
@@ -149,7 +174,7 @@ class GoogleWalletService:
         return GoogleWalletPassResponse(
             save_url=save_url,
             pass_id=pass_id,
-            loyalty_code=loyalty_code,
+            loyalty_code=phone_raw,
             customer_name=full_name,
             current_points=points,
             barcode_type="QR_CODE",
@@ -158,5 +183,218 @@ class GoogleWalletService:
         )
 
 
+    def update_pass_for_user(self, user: dict) -> dict:
+        """
+        Send a remote Push Update (PATCH) to Google Wallet REST API to instantly sync customer points on their phone.
+        """
+        import re
+        user_id = str(user.get("id", "guest"))
+        phone_raw = str(user.get("phone") or user.get("loyalty_code") or user_id)
+        phone_clean = re.sub(r'\D', '', phone_raw)
+
+        full_name = f"{user.get('first_name', 'Cliente')} {user.get('last_name', '')}".strip()
+        points = user.get("current_points", 0)
+        purchases_count = user.get("total_purchases_count", 0)
+        total_earned = user.get("total_points_earned", 0)
+
+        if phone_clean:
+            pass_id = f"{self.issuer_id}.gen_v6_{phone_clean}"
+        else:
+            pass_id = f"{self.issuer_id}.gen_v6_{user_id.replace('-', '_')}"
+
+        updated_object: Dict[str, Any] = {
+            "hexBackgroundColor": settings.CAFETERIA_BG_COLOR,
+            "textModulesData": [
+                {
+                    "id": "puntos_disponibles",
+                    "header": "PUNTOS DISPONIBLES",
+                    "body": str(points)
+                },
+                {
+                    "id": "compras_realizadas",
+                    "header": "COMPRAS REALIZADAS",
+                    "body": str(purchases_count)
+                },
+                {
+                    "id": "puntos_historicos",
+                    "header": "PUNTOS HISTÓRICOS",
+                    "body": f"{total_earned} Pts"
+                },
+                {
+                    "id": "codigo_cliente",
+                    "header": "CÓDIGO DE CLIENTE",
+                    "body": f"CEL-{phone_raw}"
+                }
+            ]
+        }
+
+
+        # If Google Service Account Key is configured, execute real Google REST API call
+        if self.private_key and "BEGIN PRIVATE KEY" in self.private_key:
+            try:
+                import requests
+                # 1. Obtain Google OAuth2 access token for wallet_object.issuer scope
+                now = int(time.time())
+                auth_claims = {
+                    "iss": self.client_email,
+                    "scope": "https://www.googleapis.com/auth/wallet_object.issuer",
+                    "aud": "https://oauth2.googleapis.com/token",
+                    "exp": now + 3600,
+                    "iat": now
+                }
+                assertion = jwt.encode(auth_claims, self.private_key, algorithm="RS256")
+
+                token_res = requests.post(
+                    "https://oauth2.googleapis.com/token",
+                    data={
+                        "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                        "assertion": assertion
+                    },
+                    timeout=5
+                )
+
+                if token_res.status_code == 200:
+                    access_token = token_res.json().get("access_token")
+                    
+                    # 2. Issue PATCH request to Google Wallet Objects API
+                    patch_url = f"https://walletobjects.googleapis.com/walletobjects/v1/genericObject/{pass_id}"
+                    patch_res = requests.patch(
+                        patch_url,
+                        headers={
+                            "Authorization": f"Bearer {access_token}",
+                            "Content-Type": "application/json"
+                        },
+                        json=updated_object,
+                        timeout=5
+                    )
+                    
+                    print(f"[GoogleWalletService] Remote PATCH response for '{pass_id}': HTTP {patch_res.status_code}")
+                    
+                    # If object is not yet created in Google Pay DB (404), pre-create object via POST
+                    if patch_res.status_code == 404:
+                        raw_class_id = settings.GOOGLE_CLASS_ID or "cafeteria_generic_v6"
+                        class_id = raw_class_id if "." in raw_class_id else f"{self.issuer_id}.{raw_class_id}"
+
+
+                        full_object: Dict[str, Any] = {
+                            "id": pass_id,
+                            "classId": class_id,
+                            "state": "ACTIVE",
+                            "hexBackgroundColor": settings.CAFETERIA_BG_COLOR,
+                            "cardTitle": {
+                                "defaultValue": {
+                                    "language": "es-419",
+                                    "value": settings.CAFETERIA_NAME
+                                }
+                            },
+                            "subheader": {
+                                "defaultValue": {
+                                    "language": "es-419",
+                                    "value": settings.CAFETERIA_SUBHEADER
+                                }
+                            },
+                            "header": {
+                                "defaultValue": {
+                                    "language": "es-419",
+                                    "value": full_name
+                                }
+                            },
+                            "textModulesData": updated_object["textModulesData"],
+                            "barcode": {
+                                "type": "QR_CODE",
+                                "value": phone_raw,
+                                "alternateText": phone_raw
+                            }
+                        }
+                        
+                        post_res = requests.post(
+                            "https://walletobjects.googleapis.com/walletobjects/v1/genericObject",
+                            headers={
+                                "Authorization": f"Bearer {access_token}",
+                                "Content-Type": "application/json"
+                            },
+                            json=full_object,
+                            timeout=5
+                        )
+                        print(f"[GoogleWalletService] Remote POST pre-create response for '{pass_id}': HTTP {post_res.status_code}")
+                        if post_res.status_code not in (200, 201):
+                            print(f"[GoogleWalletService] POST error detail: {post_res.text}")
+                        
+                        return {
+                            "status": "success",
+                            "synced": post_res.status_code in (200, 201),
+                            "pass_id": pass_id,
+                            "current_points": points,
+                            "http_code": post_res.status_code
+                        }
+
+                    return {
+                        "status": "success",
+                        "synced": patch_res.status_code == 200,
+                        "pass_id": pass_id,
+                        "current_points": points,
+                        "http_code": patch_res.status_code
+                    }
+
+                else:
+                    print(f"[GoogleWalletService] Token OAuth2 error: {token_res.text}")
+            except Exception as e:
+                print(f"[GoogleWalletService] Sync warning: {e}")
+
+        # Development / Simulation fallback
+        print(f"[GoogleWalletService] Simulation Push Sync: Pass '{pass_id}' updated to {points} Pts.")
+        return {
+            "status": "success",
+            "synced": True,
+            "is_mock": True,
+            "pass_id": pass_id,
+            "current_points": points
+        }
+
+    def _sync_class_definition(self, generic_class: dict):
+        """Helper to ensure class definition (including hexBackgroundColor) is updated on Google Pay REST API."""
+        if not self.private_key or "BEGIN PRIVATE KEY" not in self.private_key:
+            return
+        try:
+            import requests
+            class_id = generic_class.get("id")
+            now = int(time.time())
+            auth_claims = {
+                "iss": self.client_email,
+                "scope": "https://www.googleapis.com/auth/wallet_object.issuer",
+                "aud": "https://oauth2.googleapis.com/token",
+                "exp": now + 3600,
+                "iat": now
+            }
+            assertion = jwt.encode(auth_claims, self.private_key, algorithm="RS256")
+
+            token_res = requests.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                    "assertion": assertion
+                },
+                timeout=5
+            )
+
+            if token_res.status_code == 200:
+                access_token = token_res.json().get("access_token")
+                put_url = f"https://walletobjects.googleapis.com/walletobjects/v1/genericClass/{class_id}"
+                put_res = requests.put(
+                    put_url,
+                    headers={
+                        "Authorization": f"Bearer {access_token}",
+                        "Content-Type": "application/json"
+                    },
+                    json=generic_class,
+                    timeout=5
+                )
+                print(f"[GoogleWalletService] Sync Class definition '{class_id}' color '{generic_class.get('hexBackgroundColor')}': HTTP {put_res.status_code}")
+        except Exception as e:
+            print(f"[GoogleWalletService] Sync class warning: {e}")
+
+
 google_wallet_service = GoogleWalletService()
+
+
 
