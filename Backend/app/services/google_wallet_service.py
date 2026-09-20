@@ -10,9 +10,10 @@ from app.models.wallet import GoogleWalletPassResponse
 
 class GoogleWalletService:
     def __init__(self):
-        self.issuer_id = settings.GOOGLE_ISSUER_ID or "3388000000022114455"
-        self.client_email = settings.GOOGLE_CLIENT_EMAIL or "cafeteria-loyalty-sa@project.iam.gserviceaccount.com"
-        self.private_key = settings.GOOGLE_PRIVATE_KEY.replace("\\n", "\n") if settings.GOOGLE_PRIVATE_KEY else ""
+        self.issuer_id = (settings.GOOGLE_ISSUER_ID or "3388000000023191405").strip().strip('"').strip("'")
+        self.client_email = (settings.GOOGLE_CLIENT_EMAIL or "").strip().strip('"').strip("'")
+        raw_key = settings.GOOGLE_PRIVATE_KEY or ""
+        self.private_key = raw_key.strip().strip('"').strip("'").replace("\\n", "\n")
 
     def generate_pass_for_user(self, user: dict) -> GoogleWalletPassResponse:
         """
@@ -34,11 +35,12 @@ class GoogleWalletService:
         else:
             pass_id = f"{self.issuer_id}.gen_v6_{user_id.replace('-', '_')}"
 
-        raw_class_id = settings.GOOGLE_CLASS_ID or "cafeteria_generic_v6"
+        raw_class_id = (settings.GOOGLE_CLASS_ID or "cafeteria_generic_v6").strip().strip('"').strip("'")
         if "." in raw_class_id:
             class_id = raw_class_id
         else:
             class_id = f"{self.issuer_id}.{raw_class_id}"
+
 
 
 
@@ -272,8 +274,9 @@ class GoogleWalletService:
                     
                     # If object is not yet created in Google Pay DB (404), pre-create object via POST
                     if patch_res.status_code == 404:
-                        raw_class_id = settings.GOOGLE_CLASS_ID or "cafeteria_generic_v6"
+                        raw_class_id = (settings.GOOGLE_CLASS_ID or "cafeteria_generic_v6").strip().strip('"').strip("'")
                         class_id = raw_class_id if "." in raw_class_id else f"{self.issuer_id}.{raw_class_id}"
+
 
 
                         full_object: Dict[str, Any] = {
