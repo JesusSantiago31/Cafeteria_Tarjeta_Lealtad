@@ -1,3 +1,4 @@
+import uuid
 from typing import List, Optional
 from uuid import UUID
 from fastapi import HTTPException, status
@@ -5,6 +6,7 @@ from supabase import Client
 
 from app.db.supabase import get_supabase_client
 from app.services.user_service import handle_supabase_error, user_service
+from app.models.product import ProductCreate, ProductUpdate
 
 # Catalog items in case database table is not yet seeded
 DEFAULT_PRODUCTS = [
@@ -76,6 +78,63 @@ class ProductService:
             # Fallback to default catalog if table is not yet created in Supabase
             pass
         return DEFAULT_PRODUCTS
+
+    def create_product(self, product_data: ProductCreate) -> dict:
+        """Create a new reward product."""
+        new_id = str(uuid.uuid4())
+        payload = {
+            "id_prod": new_id,
+            "producto": product_data.producto,
+            "puntos_requeridos": product_data.puntos_requeridos,
+            "precio": product_data.precio or 0.0,
+            "piezas_disponibles": product_data.piezas_disponibles,
+            "imagen_url": product_data.imagen_url
+        }
+
+        try:
+            res = self.db.table("products").insert(payload).execute()
+            if res.data and len(res.data) > 0:
+                return res.data[0]
+        except Exception as e:
+            print(f"[ProductService] Supabase insert warning/fallback: {e}")
+
+        # In-memory fallback
+        DEFAULT_PRODUCTS.append(payload)
+        return payload
+
+    def update_product(self, product_id: str, product_data: ProductUpdate) -> dict:
+        """Update an existing reward product."""
+        update_dict = product_data.model_dump(exclude_unset=True)
+        if not update_dict:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No hay campos para actualizar.")
+
+        try:
+            res = self.db.table("products").update(update_dict).eq("id_prod", product_id).execute()
+            if res.data and len(res.data) > 0:
+                return res.data[0]
+        except Exception as e:
+            print(f"[ProductService] Supabase update warning/fallback: {e}")
+
+        # In-memory fallback
+        for p in DEFAULT_PRODUCTS:
+            if str(p["id_prod"]) == str(product_id):
+                p.update(update_dict)
+                return p
+
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto no encontrado.")
+
+    def delete_product(self, product_id: str) -> dict:
+        """Delete a reward product by ID."""
+        try:
+            self.db.table("products").delete().eq("id_prod", product_id).execute()
+        except Exception as e:
+            print(f"[ProductService] Supabase delete warning/fallback: {e}")
+
+        # Remove from fallback memory array
+        global DEFAULT_PRODUCTS
+        DEFAULT_PRODUCTS = [p for p in DEFAULT_PRODUCTS if str(p["id_prod"]) != str(product_id)]
+
+        return {"message": "Producto eliminado exitosamente.", "id_prod": product_id}
 
     def redeem_product(self, user_id: str, product_id: str) -> dict:
         """Redeem a product using customer loyalty points."""
@@ -166,6 +225,4 @@ class ProductService:
         }
 
 
-
 product_service = ProductService()
-

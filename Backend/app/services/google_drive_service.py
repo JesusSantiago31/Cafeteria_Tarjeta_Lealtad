@@ -2,6 +2,7 @@ import json
 import time
 import requests
 import jwt
+import base64
 from typing import Optional, Dict, Any
 from app.core.config import settings
 
@@ -49,15 +50,15 @@ class GoogleDriveService:
 
     def upload_file(self, file_content: bytes, filename: str, content_type: str = "image/jpeg") -> Dict[str, Any]:
         """
-        Uploads an image file to the designated Google Drive folder.
+        Uploads an image file to Google Drive or falls back to Supabase / Data URI.
         Returns a dict containing file_id and direct public view image_url.
         """
         token = self._get_access_token()
 
         if token:
             try:
-                # 1. Prepare Multipart Upload to Google Drive API v3
-                upload_url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
+                # 1. Attempt Multipart Upload to Google Drive API v3
+                upload_url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true"
                 headers = {"Authorization": f"Bearer {token}"}
                 
                 metadata = {
@@ -77,7 +78,7 @@ class GoogleDriveService:
                     file_id = file_data.get("id")
 
                     # 2. Make file publicly readable
-                    perm_url = f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions"
+                    perm_url = f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions?supportsAllDrives=true"
                     requests.post(
                         perm_url,
                         headers=headers,
@@ -98,8 +99,28 @@ class GoogleDriveService:
             except Exception as e:
                 print(f"[GoogleDriveService] Exception during Drive upload: {e}")
 
-        # Fallback: if Drive API is not configured or fails, return Data URI or Supabase fallback
-        import base64
+        # Fallback 1: Supabase Storage Bucket
+        try:
+            from app.db.supabase import get_supabase_client
+            supabase = get_supabase_client()
+            safe_name = f"{int(time.time())}_{filename.replace(' ', '_')}"
+            supabase.storage.from_("reward-images").upload(
+                path=safe_name,
+                file=file_content,
+                file_options={"content-type": content_type, "x-upsert": "true"}
+            )
+            public_url = supabase.storage.from_("reward-images").get_public_url(safe_name)
+            if public_url:
+                return {
+                    "success": True,
+                    "file_id": safe_name,
+                    "imagen_url": public_url,
+                    "source": "supabase_storage"
+                }
+        except Exception as se:
+            print(f"[GoogleDriveService] Supabase Storage fallback notice: {se}")
+
+        # Fallback 2: Data URI base64 string
         encoded = base64.b64encode(file_content).decode("utf-8")
         data_uri = f"data:{content_type};base64,{encoded}"
         return {

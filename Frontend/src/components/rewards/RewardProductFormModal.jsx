@@ -405,7 +405,7 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
               }}
             >
               {(saving || uploading) && <Loader2 size={16} className="spin" style={{ animation: 'spin 1s linear infinite' }} />}
-              <span>{uploading ? 'Subiendo a Google Drive...' : saving ? 'Guardando...' : productToEdit ? 'Guardar Cambios' : 'Crear Producto'}</span>
+              <span>{uploading ? 'Subiendo, espere...' : saving ? 'Guardando...' : productToEdit ? 'Guardar Cambios' : 'Crear Producto'}</span>
             </button>
           </div>
         </form>
