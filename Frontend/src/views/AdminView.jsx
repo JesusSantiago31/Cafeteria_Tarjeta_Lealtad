@@ -142,13 +142,14 @@ export const AdminView = () => {
           </div>
         </div>
 
-        <div className="card-client" style={{ margin: 0, padding: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/*<div className="card-client" style={{ margin: 0, padding: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Award size={24} color="#E2A03F" />
           <div>
             <span style={{ fontSize: '0.7rem', color: '#734F2F', opacity: 0.8, fontWeight: 700, display: 'block' }}>FIDELIZACIÓN</span>
             <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#788C5A' }}>Activo 24/7</span>
           </div>
         </div>
+        /*/}
       </div>
 
       {/* Controles de Búsqueda y Botón de Alta */}

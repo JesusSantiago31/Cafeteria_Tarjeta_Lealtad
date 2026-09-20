@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Gift, Image as ImageIcon, Award, DollarSign, PackageCheck, AlertCircle } from 'lucide-react';
+import { X, Gift, Image as ImageIcon, Award, DollarSign, PackageCheck, AlertCircle, UploadCloud, CheckCircle2, Loader2 } from 'lucide-react';
 import { productService } from '../../services/api';
 
 export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
@@ -11,6 +11,9 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
     imagen_url: ''
   });
 
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [filePreview, setFilePreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -23,6 +26,9 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
         piezas_disponibles: productToEdit.piezas_disponibles !== undefined ? productToEdit.piezas_disponibles : (productToEdit.disponibles || 10),
         imagen_url: productToEdit.imagen_url || ''
       });
+      if (productToEdit.imagen_url) {
+        setFilePreview(productToEdit.imagen_url);
+      }
     }
   }, [productToEdit]);
 
@@ -32,6 +38,19 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
       ...prev,
       [name]: type === 'number' ? parseFloat(value) || 0 : value
     }));
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        setError('Por favor selecciona un archivo de imagen válido (JPG, PNG, WebP).');
+        return;
+      }
+      setSelectedFile(file);
+      setFilePreview(URL.createObjectURL(file));
+      setError('');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -49,13 +68,28 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
     }
 
     setSaving(true);
+    let finalImageUrl = formData.imagen_url;
+
     try {
+      // 1. Si hay un archivo seleccionado, subirlo primero a Google Drive
+      if (selectedFile) {
+        setUploading(true);
+        const uploadRes = await productService.uploadProductImage(selectedFile);
+        if (uploadRes && uploadRes.imagen_url) {
+          finalImageUrl = uploadRes.imagen_url;
+        } else {
+          throw new Error("No se pudo obtener la URL de la imagen en Google Drive.");
+        }
+        setUploading(false);
+      }
+
+      // 2. Guardar o actualizar producto con la URL de la imagen
       const payload = {
         producto: formData.producto.trim(),
         puntos_requeridos: parseInt(formData.puntos_requeridos),
         precio: parseFloat(formData.precio) || 0,
         piezas_disponibles: parseInt(formData.piezas_disponibles) || 0,
-        imagen_url: formData.imagen_url.trim() || null
+        imagen_url: finalImageUrl ? finalImageUrl.trim() : null
       };
 
       if (productToEdit) {
@@ -68,10 +102,11 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
       onSaved();
       onClose();
     } catch (err) {
-      const msg = err.response?.data?.detail || err.message || 'Error al guardar el producto.';
+      const msg = err.response?.data?.detail || err.message || 'Error al procesar la recompensa.';
       setError(msg);
     } finally {
       setSaving(false);
+      setUploading(false);
     }
   };
 
@@ -266,28 +301,70 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
             />
           </div>
 
-          {/* URL de la Imagen */}
+          {/* Selector de Archivo de Imagen para Google Drive */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: '600', color: '#4A331E', marginBottom: '6px' }}>
-              <ImageIcon size={16} color="#788C5A" />
-              URL de la Imagen del Producto
+              <UploadCloud size={16} color="#788C5A" />
+              Subir Imagen de Producto (Google Drive)
             </label>
-            <input 
-              type="url" 
-              name="imagen_url" 
-              value={formData.imagen_url} 
-              onChange={handleChange}
-              placeholder="https://ejemplo.com/imagen.jpg" 
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: '10px',
-                border: '1px solid #D5C8B5',
-                fontSize: '0.9rem',
-                background: '#FFF',
-                boxSizing: 'border-box'
-              }}
-            />
+
+            <div style={{
+              border: '2px dashed #D5C8B5',
+              borderRadius: '12px',
+              padding: '16px',
+              textAlign: 'center',
+              background: '#FAF7F2',
+              position: 'relative',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}>
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={handleFileChange}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  opacity: 0,
+                  cursor: 'pointer'
+                }}
+              />
+
+              {filePreview ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center' }}>
+                  <img 
+                    src={filePreview} 
+                    alt="Previsualización" 
+                    style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '10px', border: '1px solid #D5C8B5' }} 
+                  />
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#4A331E' }}>
+                      {selectedFile ? selectedFile.name : 'Imagen actual del producto'}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#788C5A', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                      <CheckCircle2 size={14} />
+                      <span>{selectedFile ? 'Lista para subir a Google Drive' : 'Guardada en Drive'}</span>
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: '#999', textDecoration: 'underline', marginTop: '2px', display: 'block' }}>
+                      Haz clic para cambiar imagen
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <UploadCloud size={32} color="#788C5A" style={{ margin: '0 auto 6px' }} />
+                  <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#4A331E' }}>
+                    Seleccionar imagen desde tu equipo
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '2px' }}>
+                    Se guardará automáticamente en la carpeta de Google Drive
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Acciones */}
@@ -295,6 +372,7 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
             <button 
               type="button" 
               onClick={onClose} 
+              disabled={saving || uploading}
               style={{
                 padding: '10px 18px',
                 borderRadius: '10px',
@@ -310,7 +388,7 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
             </button>
             <button 
               type="submit" 
-              disabled={saving}
+              disabled={saving || uploading}
               style={{
                 padding: '10px 22px',
                 borderRadius: '10px',
@@ -320,10 +398,14 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
                 fontWeight: '600',
                 cursor: 'pointer',
                 fontSize: '0.9rem',
-                boxShadow: '0 4px 10px rgba(120, 140, 90, 0.3)'
+                boxShadow: '0 4px 10px rgba(120, 140, 90, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
               }}
             >
-              {saving ? 'Guardando...' : productToEdit ? 'Guardar Cambios' : 'Crear Producto'}
+              {(saving || uploading) && <Loader2 size={16} className="spin" style={{ animation: 'spin 1s linear infinite' }} />}
+              <span>{uploading ? 'Subiendo a Google Drive...' : saving ? 'Guardando...' : productToEdit ? 'Guardar Cambios' : 'Crear Producto'}</span>
             </button>
           </div>
         </form>

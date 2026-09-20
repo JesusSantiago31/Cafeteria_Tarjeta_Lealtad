@@ -92,6 +92,18 @@ export const productService = {
     return response.data;
   },
 
+  // Upload product image file to Google Drive
+  uploadProductImage: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post('/products/upload-image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
   // Redeem product using points
   redeemProduct: async (userId, productId) => {
     const response = await apiClient.post('/products/redeem', {
