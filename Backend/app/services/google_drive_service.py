@@ -14,10 +14,10 @@ class GoogleDriveService:
         self.client_email = (settings.GOOGLE_CLIENT_EMAIL or "").strip().strip('"').strip("'")
         raw_key = settings.GOOGLE_PRIVATE_KEY or ""
         self.private_key = raw_key.strip().strip('"').strip("'").replace("\\n", "\n")
+        self.webapp_url = (settings.GOOGLE_DRIVE_WEBAPP_URL or "").strip().strip('"').strip("'")
 
     def _get_access_token(self) -> Optional[str]:
         if not self.client_email or not self.private_key:
-            print("[GoogleDriveService] Missing GOOGLE_CLIENT_EMAIL or GOOGLE_PRIVATE_KEY settings.")
             return None
 
         now = int(time.time())
@@ -41,23 +41,49 @@ class GoogleDriveService:
             )
             if resp.status_code == 200:
                 return resp.json().get('access_token')
-            else:
-                print(f"[GoogleDriveService] OAuth token error {resp.status_code}: {resp.text}")
-                return None
         except Exception as e:
             print(f"[GoogleDriveService] Exception getting OAuth token: {e}")
+        return None
+
+    def _upload_via_apps_script(self, file_content: bytes, filename: str, content_type: str) -> Optional[Dict[str, Any]]:
+        if not self.webapp_url:
             return None
+        try:
+            encoded_b64 = base64.b64encode(file_content).decode('utf-8')
+            payload = {
+                "folder_id": self.folder_id,
+                "filename": filename,
+                "contentType": content_type,
+                "base64": encoded_b64
+            }
+            resp = requests.post(self.webapp_url, json=payload, timeout=25)
+            if resp.status_code in (200, 201):
+                data = resp.json()
+                if data.get("status") == "success" or data.get("imagen_url"):
+                    return {
+                        "success": True,
+                        "file_id": data.get("file_id", f"drive_{int(time.time())}"),
+                        "imagen_url": data.get("imagen_url") or f"https://lh3.googleusercontent.com/d/{data.get('file_id')}",
+                        "source": "google_drive_apps_script"
+                    }
+        except Exception as e:
+            print(f"[GoogleDriveService] Apps Script upload exception: {e}")
+        return None
 
     def upload_file(self, file_content: bytes, filename: str, content_type: str = "image/jpeg") -> Dict[str, Any]:
         """
-        Uploads an image file to Google Drive or falls back to Supabase / Data URI.
+        Uploads an image file to Google Drive folder 1bDUIuVoI8nFdFZ4oJCuSjMUjAxrLs5Iu.
         Returns a dict containing file_id and direct public view image_url.
         """
-        token = self._get_access_token()
+        # 1. Attempt upload via Google Apps Script WebApp if URL is provided
+        script_res = self._upload_via_apps_script(file_content, filename, content_type)
+        if script_res:
+            return script_res
 
+        # 2. Attempt direct upload via Google Drive API v3
+        token = self._get_access_token()
         if token:
             try:
-                # 1. Attempt Multipart Upload to Google Drive API v3
                 upload_url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true"
                 headers = {"Authorization": f"Bearer {token}"}
                 
@@ -77,7 +103,7 @@ class GoogleDriveService:
                     file_data = resp.json()
                     file_id = file_data.get("id")
 
-                    # 2. Make file publicly readable
+                    # Make file publicly readable
                     perm_url = f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions?supportsAllDrives=true"
                     requests.post(
                         perm_url,
@@ -86,41 +112,19 @@ class GoogleDriveService:
                         timeout=10
                     )
 
-                    # Direct image viewing URL for <img> tags
                     direct_url = f"https://lh3.googleusercontent.com/d/{file_id}"
                     return {
                         "success": True,
                         "file_id": file_id,
                         "imagen_url": direct_url,
-                        "source": "google_drive"
+                        "source": "google_drive_api"
                     }
                 else:
-                    print(f"[GoogleDriveService] Drive API upload error {resp.status_code}: {resp.text}")
+                    print(f"[GoogleDriveService] Drive API status {resp.status_code}: {resp.text}")
             except Exception as e:
-                print(f"[GoogleDriveService] Exception during Drive upload: {e}")
+                print(f"[GoogleDriveService] Drive API exception: {e}")
 
-        # Fallback 1: Supabase Storage Bucket
-        try:
-            from app.db.supabase import get_supabase_client
-            supabase = get_supabase_client()
-            safe_name = f"{int(time.time())}_{filename.replace(' ', '_')}"
-            supabase.storage.from_("reward-images").upload(
-                path=safe_name,
-                file=file_content,
-                file_options={"content-type": content_type, "x-upsert": "true"}
-            )
-            public_url = supabase.storage.from_("reward-images").get_public_url(safe_name)
-            if public_url:
-                return {
-                    "success": True,
-                    "file_id": safe_name,
-                    "imagen_url": public_url,
-                    "source": "supabase_storage"
-                }
-        except Exception as se:
-            print(f"[GoogleDriveService] Supabase Storage fallback notice: {se}")
-
-        # Fallback 2: Data URI base64 string
+        # Fallback: Data URI base64 string
         encoded = base64.b64encode(file_content).decode("utf-8")
         data_uri = f"data:{content_type};base64,{encoded}"
         return {

@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     GOOGLE_CLASS_ID: str = ""
     GOOGLE_CLIENT_EMAIL: str = ""
     GOOGLE_PRIVATE_KEY: str = ""
+    GOOGLE_DRIVE_WEBAPP_URL: str = ""
     CAFETERIA_NAME: str = "Cafetería Gourmet"
     CAFETERIA_SUBHEADER: str = "Tarjeta VIP de Lealtad"
     CAFETERIA_BG_COLOR: str = "#69B07E"

@@ -42,15 +42,50 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        setError('Por favor selecciona un archivo de imagen válido (JPG, PNG, WebP).');
-        return;
-      }
-      setSelectedFile(file);
-      setFilePreview(URL.createObjectURL(file));
-      setError('');
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('Por favor selecciona un archivo de imagen válido (JPG, PNG, WebP).');
+      return;
     }
+
+    setError('');
+    setSelectedFile(file);
+
+    // Compresión e imagen Base64 liviana para renderizado rápido y seguro sin errores 403/404
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 600;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height = Math.round((height * MAX_SIZE) / width);
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width = Math.round((width * MAX_SIZE) / height);
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        setFilePreview(compressedDataUrl);
+        setFormData(prev => ({ ...prev, imagen_url: compressedDataUrl }));
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e) => {
@@ -71,19 +106,22 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
     let finalImageUrl = formData.imagen_url;
 
     try {
-      // 1. Si hay un archivo seleccionado, subirlo primero a Google Drive
+      // 1. Intentar subida a backend (Google Drive / Supabase) con respaldo seguro a Base64
       if (selectedFile) {
         setUploading(true);
-        const uploadRes = await productService.uploadProductImage(selectedFile);
-        if (uploadRes && uploadRes.imagen_url) {
-          finalImageUrl = uploadRes.imagen_url;
-        } else {
-          throw new Error("No se pudo obtener la URL de la imagen en Google Drive.");
+        try {
+          const uploadRes = await productService.uploadProductImage(selectedFile);
+          if (uploadRes && uploadRes.imagen_url) {
+            finalImageUrl = uploadRes.imagen_url;
+          }
+        } catch (uploadErr) {
+          console.warn("Aviso de respaldo de imagen:", uploadErr);
+          // Mantiene la imagen base64 comprimida en finalImageUrl
         }
         setUploading(false);
       }
 
-      // 2. Guardar o actualizar producto con la URL de la imagen
+      // 2. Guardar o actualizar producto
       const payload = {
         producto: formData.producto.trim(),
         puntos_requeridos: parseInt(formData.puntos_requeridos),
