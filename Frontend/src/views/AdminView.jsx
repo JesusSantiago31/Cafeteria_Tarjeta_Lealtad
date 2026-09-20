@@ -126,7 +126,7 @@ export const AdminView = () => {
         <>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
             <ShieldAlert size={22} color="#788C5A" />
-            <h2 style={{ margin: 0 }}>Gestión de Clientes (Admin)</h2>
+            <h2 style={{ margin: 0 }}>Gestión de Clientes</h2>
           </div>
           <p style={{ fontSize: '0.8rem', color: '#734F2F', textAlign: 'center', marginBottom: '16px', opacity: 0.85 }}>
             Módulo administrativo protegido para el control del directorio, alta de clientes y auditoría.
@@ -148,8 +148,7 @@ export const AdminView = () => {
             <span style={{ fontSize: '0.7rem', color: '#734F2F', opacity: 0.8, fontWeight: 700, display: 'block' }}>FIDELIZACIÓN</span>
             <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#788C5A' }}>Activo 24/7</span>
           </div>
-        </div>
-        /*/}
+        </div>*/}
       </div>
 
       {/* Controles de Búsqueda y Botón de Alta */}

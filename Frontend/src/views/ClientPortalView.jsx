@@ -244,7 +244,7 @@ export function ClientPortalView() {
       {/* 1. VISTA DE REGISTRO */}
       {view === 'register' && (
         <div className="card">
-          <h2 className="card-title">Regístrate en nuestro Club</h2>
+          <h2 className="card-title">Regístrate para obtener beneficios</h2>
           <form onSubmit={handleRegisterSubmit}>
             <div className="form-group">
               <label>Número de Teléfono</label>
