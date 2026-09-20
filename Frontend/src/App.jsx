@@ -25,7 +25,7 @@ export function App() {
   }, []);
 
   const navigateTo = (path) => {
-    if (path === '/admin' && !isAdminUnlocked) {
+    if (path.startsWith('/admin') && !isAdminUnlocked) {
       setPinInput('');
       setPinError('');
       setShowPinModal(true);
@@ -40,8 +40,9 @@ export function App() {
     if (pinInput === ADMIN_PIN) {
       setIsAdminUnlocked(true);
       setShowPinModal(false);
-      window.history.pushState({}, '', '/admin');
-      setCurrentPath('/admin');
+      const targetPath = currentPath.startsWith('/admin') ? currentPath : '/admin';
+      window.history.pushState({}, '', targetPath);
+      setCurrentPath(targetPath);
       setPinInput('');
       setPinError('');
     } else {
@@ -58,7 +59,7 @@ export function App() {
 
   // Renderizar la vista correspondiente a la ruta URL actual
   const renderView = () => {
-    if (currentPath === '/admin') {
+    if (currentPath.startsWith('/admin')) {
       if (!isAdminUnlocked) {
         return (
           <div className="card" style={{ textAlign: 'center', padding: '40px 20px', margin: '40px auto', maxWidth: '400px' }}>

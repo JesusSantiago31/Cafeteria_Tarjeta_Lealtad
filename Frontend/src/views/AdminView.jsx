@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, QrCode, Edit, Trash2, Award, RefreshCw, Users, ShieldAlert } from 'lucide-react';
+import { UserPlus, QrCode, Edit, Trash2, Award, RefreshCw, Users, ShieldAlert, Gift } from 'lucide-react';
 import { userService } from '../services/api';
 import { CustomerModal } from '../components/CustomerModal';
 import { CustomerForm } from '../components/CustomerForm';
+import { AdminRewardsView } from './admin/AdminRewardsView';
 
 export const AdminView = () => {
+  const [activeTab, setActiveTab] = useState(
+    window.location.pathname.includes('recompensas') ? 'recompensas' : 'clientes'
+  );
   const [users, setUsers] = useState([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
@@ -49,14 +53,84 @@ export const AdminView = () => {
   };
 
   return (
-    <div className="container" style={{ maxWidth: '700px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-        <ShieldAlert size={22} color="#788C5A" />
-        <h2 style={{ margin: 0 }}>Gestión de Clientes (Admin)</h2>
+    <div className="container" style={{ maxWidth: activeTab === 'recompensas' ? '1100px' : '750px', transition: 'max-width 0.3s ease' }}>
+      {/* Sub-navegación Pestañas Administrativas */}
+      <div style={{
+        display: 'flex',
+        justify: 'center',
+        gap: '8px',
+        marginBottom: '20px',
+        background: '#FAF7F2',
+        padding: '6px',
+        borderRadius: '14px',
+        border: '1px solid #E8DFD1'
+      }}>
+        <button
+          onClick={() => {
+            setActiveTab('clientes');
+            window.history.pushState({}, '', '/admin');
+          }}
+          style={{
+            flex: 1,
+            padding: '10px 16px',
+            borderRadius: '10px',
+            border: 'none',
+            background: activeTab === 'clientes' ? '#734F2F' : 'transparent',
+            color: activeTab === 'clientes' ? '#FFF' : '#734F2F',
+            fontWeight: '700',
+            fontSize: '0.88rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justify: 'center',
+            gap: '8px',
+            transition: 'all 0.2s ease',
+            boxShadow: activeTab === 'clientes' ? '0 4px 10px rgba(115, 79, 47, 0.25)' : 'none'
+          }}
+        >
+          <Users size={18} />
+          <span>Directorio de Clientes</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveTab('recompensas');
+            window.history.pushState({}, '', '/admin/recompensas');
+          }}
+          style={{
+            flex: 1,
+            padding: '10px 16px',
+            borderRadius: '10px',
+            border: 'none',
+            background: activeTab === 'recompensas' ? '#788C5A' : 'transparent',
+            color: activeTab === 'recompensas' ? '#FFF' : '#734F2F',
+            fontWeight: '700',
+            fontSize: '0.88rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justify: 'center',
+            gap: '8px',
+            transition: 'all 0.2s ease',
+            boxShadow: activeTab === 'recompensas' ? '0 4px 10px rgba(120, 140, 90, 0.25)' : 'none'
+          }}
+        >
+          <Gift size={18} />
+          <span>Catálogo de Recompensas</span>
+        </button>
       </div>
-      <p style={{ fontSize: '0.8rem', color: '#734F2F', textAlign: 'center', marginBottom: '16px', opacity: 0.85 }}>
-        Módulo administrativo protegido para el control del directorio, alta de clientes y auditoría.
-      </p>
+
+      {activeTab === 'recompensas' ? (
+        <AdminRewardsView />
+      ) : (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+            <ShieldAlert size={22} color="#788C5A" />
+            <h2 style={{ margin: 0 }}>Gestión de Clientes (Admin)</h2>
+          </div>
+          <p style={{ fontSize: '0.8rem', color: '#734F2F', textAlign: 'center', marginBottom: '16px', opacity: 0.85 }}>
+            Módulo administrativo protegido para el control del directorio, alta de clientes y auditoría.
+          </p>
 
       {/* Tarjetas de Métricas Breves */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
@@ -204,6 +278,8 @@ export const AdminView = () => {
             fetchUsers();
           }}
         />
+      )}
+        </>
       )}
     </div>
   );

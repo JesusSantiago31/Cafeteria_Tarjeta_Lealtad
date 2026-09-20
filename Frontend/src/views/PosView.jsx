@@ -266,31 +266,51 @@ export const PosView = () => {
     }
   };
 
+  const [loadingProductos, setLoadingProductos] = useState(false);
+
+  const loadProducts = async () => {
+    setLoadingProductos(true);
+    try {
+      const data = await productService.getProducts();
+      setProductos(data || []);
+    } catch (err) {
+      console.error("Error al cargar productos para canje:", err);
+    } finally {
+      setLoadingProductos(false);
+    }
+  };
+
+  const handleOpenCanje = () => {
+    setShowCanje(true);
+    loadProducts();
+  };
+
   const handleCanjearProducto = async (producto) => {
     if (!customer) return;
-    if (customer.current_points < producto.puntos) {
-      alert(`Puntos insuficientes. Se requieren ${producto.puntos} pts y el cliente tiene ${customer.current_points} pts.`);
+    if (customer.current_points < producto.puntos_requeridos) {
+      alert(`Puntos insuficientes. Se requieren ${producto.puntos_requeridos} pts y el cliente tiene ${customer.current_points} pts.`);
       return;
     }
 
-    if (!window.confirm(`¿Confirmar canje de "${producto.descripcion}" por ${producto.puntos} pts?`)) return;
+    if (!window.confirm(`¿Confirmar canje directo de "${producto.producto}" por ${producto.puntos_requeridos} pts?`)) return;
 
     try {
-      const nuevosPuntosActuales = customer.current_points - producto.puntos;
-      const nuevosTotalSpent = (customer.total_points_spent || 0) + producto.puntos;
-
-      const updated = await userService.updateUser(customer.id, {
-        current_points: nuevosPuntosActuales,
-        total_points_spent: nuevosTotalSpent
-      });
-
-      setCustomer(updated);
-      setProductos(prev => prev.map(p => p.id === producto.id ? { ...p, disponibles: Math.max(0, p.disponibles - 1) } : p));
-      alert(`¡Canje realizado con éxito! Nuevo saldo: ${updated.current_points} pts.`);
+      const res = await productService.redeemProduct(customer.id, producto.id_prod);
+      const remainingPoints = res.remaining_points !== undefined ? res.remaining_points : (customer.current_points - producto.puntos_requeridos);
+      
+      setCustomer(prev => ({
+        ...prev,
+        current_points: remainingPoints
+      }));
+      
+      setProductos(prev => prev.map(p => String(p.id_prod) === String(producto.id_prod) ? { ...p, piezas_disponibles: Math.max(0, p.piezas_disponibles - 1) } : p));
+      alert(`¡Canje realizado con éxito! Se entregó "${producto.producto}". Nuevo saldo: ${remainingPoints} pts.`);
     } catch (err) {
-      alert("Error al procesar canje: " + err.message);
+      const msg = err.response?.data?.detail || err.message || "Error al procesar el canje.";
+      alert("Error al procesar canje: " + msg);
     }
   };
+
 
   return (
     <div className="container">
@@ -430,7 +450,7 @@ export const PosView = () => {
             <span>{procesandoPuntos ? 'Procesando...' : 'Acumular Puntos'}</span>
           </button>
 
-          <button className="btn btn-accent"  style={{ marginTop: '12px' }}  onClick={() => setShowCanje(true)}>
+          <button className="btn btn-accent" style={{ marginTop: '12px' }} onClick={handleOpenCanje}>
             <Gift size={18} />
             <span>Canjear Puntos</span>
           </button>
@@ -443,21 +463,48 @@ export const PosView = () => {
       {showCanje && customer && (
         <div id="seccionCanje" style={{ marginTop: '20px', borderTop: '2px solid #CFD989', paddingTop: '15px' }}>
           <h3>Catálogo de Canje</h3>
-          <div id="listaProductos" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {productos.map(p => (
-              <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#FAFDF7', border: '1px solid #CFD989', borderRadius: '8px' }}>
-                <div>
-                  <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#734F2F' }}>{p.descripcion}</div>
-                  <div style={{ fontSize: '12px', color: '#788C5A', fontWeight: 'bold' }}>{p.puntos} pts | Disponibles: {p.disponibles}</div>
-                </div>
-                <button className="btn btn-primary" style={{ width: 'auto', padding: '6px 14px', fontSize: '12px' }} onClick={() => handleCanjearProducto(p)}>
-                  Canjear
-                </button>
-              </div>
-            ))}
-          </div>
-          <button className="btn btn-outline" style={{ marginTop: '10px' }} onClick={() => setShowCanje(false)}>
-            Cancelar
+          {loadingProductos ? (
+            <p style={{ fontSize: '13px', color: '#788C5A', textAlign: 'center', padding: '15px' }}>Cargando catálogo...</p>
+          ) : productos.length === 0 ? (
+            <p style={{ fontSize: '13px', color: '#888', textAlign: 'center', padding: '15px' }}>No hay productos de recompensa disponibles.</p>
+          ) : (
+            <div id="listaProductos" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginTop: '10px' }}>
+              {productos.map(p => {
+                const ptsReq = p.puntos_requeridos || p.puntos || 0;
+                const stock = p.piezas_disponibles !== undefined ? p.piezas_disponibles : p.disponibles;
+                const canAfford = (customer.current_points || 0) >= ptsReq;
+                const hasStock = stock === undefined || stock > 0;
+                const prodName = p.producto || p.descripcion || 'Producto sin nombre';
+
+                return (
+                  <div key={p.id_prod || p.id} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '12px', background: '#FAFDF7', border: '1px solid #CFD989', borderRadius: '12px', boxShadow: '0 2px 5px rgba(0,0,0,0.03)' }}>
+                    {p.imagen_url && (
+                      <img src={p.imagen_url} alt={prodName} style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: '8px', marginBottom: '8px' }} />
+                    )}
+                    <div>
+                      <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#734F2F' }}>{prodName}</div>
+                      <div style={{ fontSize: '12px', color: '#788C5A', fontWeight: 'bold', marginTop: '2px' }}>
+                        ⭐ {ptsReq} pts
+                      </div>
+                      <div style={{ fontSize: '11px', color: hasStock ? '#555' : '#D9534F', marginTop: '2px' }}>
+                        Stock: {stock !== undefined ? `${stock} pzas` : 'Disponible'} {p.precio ? `| $${p.precio}` : ''}
+                      </div>
+                    </div>
+                    <button 
+                      className="btn btn-primary" 
+                      style={{ width: '100%', padding: '8px 14px', fontSize: '12px', marginTop: '10px', opacity: (canAfford && hasStock) ? 1 : 0.6 }} 
+                      disabled={!canAfford || !hasStock}
+                      onClick={() => handleCanjearProducto(p)}
+                    >
+                      {!hasStock ? 'Agotado' : !canAfford ? 'Puntos Insuficientes' : 'Canjear Directo'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <button className="btn btn-outline" style={{ marginTop: '15px' }} onClick={() => setShowCanje(false)}>
+            Cerrar Catálogo
           </button>
         </div>
       )}

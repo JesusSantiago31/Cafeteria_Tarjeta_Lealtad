@@ -74,6 +74,24 @@ export const productService = {
     return response.data;
   },
 
+  // Create reward product
+  createProduct: async (productData) => {
+    const response = await apiClient.post('/products/', productData);
+    return response.data;
+  },
+
+  // Update reward product
+  updateProduct: async (productId, productData) => {
+    const response = await apiClient.put(`/products/${productId}`, productData);
+    return response.data;
+  },
+
+  // Delete reward product
+  deleteProduct: async (productId) => {
+    const response = await apiClient.delete(`/products/${productId}`);
+    return response.data;
+  },
+
   // Redeem product using points
   redeemProduct: async (userId, productId) => {
     const response = await apiClient.post('/products/redeem', {
@@ -83,3 +101,4 @@ export const productService = {
     return response.data;
   }
 };
+
