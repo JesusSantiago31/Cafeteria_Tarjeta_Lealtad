@@ -110,6 +110,15 @@ class GoogleWalletService:
         stamps = user.get("current_stamps", 0)
         max_stamps = user.get("max_stamps", 10)
 
+        # Add Geofencing coordinates (Location-based Lockscreen Notification)
+        generic_class["locations"] = [
+            {
+                "kind": "walletobjects#latLongPoint",
+                "latitude": float(getattr(settings, "CAFETERIA_LATITUDE", 19.432608)),
+                "longitude": float(getattr(settings, "CAFETERIA_LONGITUDE", -99.133209))
+            }
+        ]
+
         # Build Generic Object Instance
         generic_object: Dict[str, Any] = {
             "id": pass_id,
@@ -126,11 +135,19 @@ class GoogleWalletService:
             },
             "hexBackgroundColor": settings.CAFETERIA_BG_COLOR,
             "heroImage": hero_image_obj,
+            "locations": generic_class["locations"],
+            "messages": [
+                {
+                    "id": f"msg_welcome_{int(time.time())}",
+                    "header": "¡Bienvenido a Cafetería Gourmet! ☕",
+                    "body": f"¡Hola {user.get('first_name', 'Cliente')}! Tienes {stamps} de {max_stamps} sellos y {points} pts en tu tarjeta VIP."
+                }
+            ],
             "textModulesData": [
                 {
                     "id": "sellos_acumulados",
                     "header": "SELLOS ACUMULADOS",
-                    "body": f"{stamps} de {max_stamps} "
+                    "body": f"{stamps} de {max_stamps}"
                 },
                 {
                     "id": "puntos_disponibles",
@@ -228,11 +245,25 @@ class GoogleWalletService:
 
         updated_object: Dict[str, Any] = {
             "hexBackgroundColor": settings.CAFETERIA_BG_COLOR,
+            "locations": [
+                {
+                    "kind": "walletobjects#latLongPoint",
+                    "latitude": float(getattr(settings, "CAFETERIA_LATITUDE", 19.432608)),
+                    "longitude": float(getattr(settings, "CAFETERIA_LONGITUDE", -99.133209))
+                }
+            ],
+            "messages": [
+                {
+                    "id": f"msg_update_{user_id}_{int(time.time())}",
+                    "header": "¡Notificación de Lealtad! ☕🏷️",
+                    "body": f"¡Felicidades {user.get('first_name', '')}! Acabas de recibir nuevos puntos o sellos. Saldo actual: {stamps}/10 sellos y {points} pts."
+                }
+            ],
             "textModulesData": [
                 {
                     "id": "sellos_acumulados",
                     "header": "SELLOS ACUMULADOS",
-                    "body": f"{stamps} de {max_stamps} "
+                    "body": f"{stamps} de {max_stamps}"
                 },
                 {
                     "id": "puntos_disponibles",

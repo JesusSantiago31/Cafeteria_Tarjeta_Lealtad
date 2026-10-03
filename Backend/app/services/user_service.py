@@ -150,7 +150,7 @@ class UserService:
             return [], 0
 
     def _enrich_user_stamp_image(self, user: dict) -> dict:
-        """Fallback helper to attach wallet_hero_image_url from stamp_images if user's field is empty."""
+        """Fallback helper to attach wallet_hero_image_url from stamp_images or stamp_levels if user's field is empty."""
         if not user:
             return user
         
@@ -158,14 +158,25 @@ class UserService:
         user["current_stamps"] = stamps
         user["max_stamps"] = user.get("max_stamps") or 10
 
-        if not user.get("wallet_hero_image_url"):
+        img = user.get("wallet_hero_image_url")
+        if not img:
             try:
-                stamp_res = self.db.table("stamp_images").select("image_url, wallet_hero_url").eq("stamp_count", stamps).limit(1).execute()
-                if stamp_res.data:
-                    img = stamp_res.data[0].get("wallet_hero_url") or stamp_res.data[0].get("image_url")
-                    user["wallet_hero_image_url"] = img
+                res1 = self.db.table("stamp_images").select("*").or_(f"stamp_count.eq.{stamps},nivel_sello.eq.{stamps}").limit(1).execute()
+                if res1.data:
+                    img = res1.data[0].get("wallet_hero_url") or res1.data[0].get("image_url") or res1.data[0].get("imagen_url")
             except Exception:
                 pass
+
+            if not img:
+                try:
+                    res2 = self.db.table("stamp_levels").select("*").eq("nivel_sello", stamps).limit(1).execute()
+                    if res2.data:
+                        img = res2.data[0].get("imagen_url") or res2.data[0].get("image_url")
+                except Exception:
+                    pass
+
+            if img:
+                user["wallet_hero_image_url"] = img
         return user
 
     def get_user_by_id(self, user_id: str) -> dict:
@@ -276,14 +287,24 @@ class UserService:
         # Lookup and attach stamp image matching updated current_stamps
         if "current_stamps" in update_data and update_data["current_stamps"] is not None:
             target_stamps = int(update_data["current_stamps"])
+            img = None
             try:
-                stamp_res = self.db.table("stamp_images").select("image_url, wallet_hero_url").eq("stamp_count", target_stamps).limit(1).execute()
-                if stamp_res.data:
-                    img = stamp_res.data[0].get("wallet_hero_url") or stamp_res.data[0].get("image_url")
-                    if img:
-                        update_data["wallet_hero_image_url"] = img
-            except Exception as e:
-                print(f"[UserService] Error updating stamp image for {target_stamps} sellos: {e}")
+                res1 = self.db.table("stamp_images").select("*").or_(f"stamp_count.eq.{target_stamps},nivel_sello.eq.{target_stamps}").limit(1).execute()
+                if res1.data:
+                    img = res1.data[0].get("wallet_hero_url") or res1.data[0].get("image_url") or res1.data[0].get("imagen_url")
+            except Exception:
+                pass
+
+            if not img:
+                try:
+                    res2 = self.db.table("stamp_levels").select("*").eq("nivel_sello", target_stamps).limit(1).execute()
+                    if res2.data:
+                        img = res2.data[0].get("imagen_url") or res2.data[0].get("image_url")
+                except Exception:
+                    pass
+
+            if img:
+                update_data["wallet_hero_image_url"] = img
 
         res = (
             self.db.table("users")

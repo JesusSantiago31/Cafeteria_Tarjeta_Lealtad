@@ -53,8 +53,12 @@ class UserResponse(UserBase):
     total_points_earned: int = 0
     total_points_spent: int = 0
     total_purchases_count: int = 0
+    current_stamps: Optional[int] = 0
+    max_stamps: Optional[int] = 10
+    total_stamps_earned: Optional[int] = 0
+    wallet_hero_image_url: Optional[str] = None
     is_active: bool = True
     created_at: Optional[Any] = None
     updated_at: Optional[Any] = None
 
-    model_config = ConfigDict(from_attributes=True, extra="ignore")
+    model_config = ConfigDict(from_attributes=True, extra="allow")
