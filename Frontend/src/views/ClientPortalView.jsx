@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Coffee, QrCode, Wallet, LogIn, UserPlus, ArrowLeft, CheckCircle2, Gift, X, Sparkles, Tag, AlertTriangle } from 'lucide-react';
-import { userService, productService } from '../services/api';
+import { userService, productService, loyaltyService } from '../services/api';
 
 export function ClientPortalView() {
   const [view, setView] = useState('register'); // 'register' | 'login' | 'success_qr' | 'loyalty_card'
@@ -18,6 +18,20 @@ export function ClientPortalView() {
   const [redeemSuccess, setRedeemSuccess] = useState('');
   const [redeemError, setRedeemError] = useState('');
   const [redeemingId, setRedeemingId] = useState(null);
+  const [stampImagesMap, setStampImagesMap] = useState([]);
+
+  // Cargar mapeo global de imágenes de sellos como respaldo
+  useEffect(() => {
+    const fetchStampImagesMap = async () => {
+      try {
+        const imgs = await loyaltyService.getStampLevels();
+        setStampImagesMap(imgs || []);
+      } catch (err) {
+        console.error("Error cargando mapeo de sellos:", err);
+      }
+    };
+    fetchStampImagesMap();
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -33,7 +47,9 @@ export function ClientPortalView() {
         phone: clientPhone,
         phone_number: clientPhone,
         full_name: clientName || 'Cliente',
-        puntos: parseInt(clientPoints || '0', 10)
+        puntos: parseInt(clientPoints || '0', 10),
+        current_stamps: 0,
+        max_stamps: 10
       });
       setView('loyalty_card');
     }
@@ -417,7 +433,7 @@ export function ClientPortalView() {
               }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.65-.79 1.1-1.9 0.98-3.01-.95.04-2.12.64-2.8 1.44-.6.7-.1.14-1.83 0.98-3.01 1.08-.04 2.22-.68 2.84-1.44z"/>
+                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.65-.79 1.1-1.9 0.98-3.01-.95.04-2.12.64-2.8 1.44-.6.7-.1.14-1.83 0.98-3.01 1.08-.04 2.22 -0.68 2.84 -1.44z"/>
               </svg>
               <span>Añadir a Apple Wallet</span>
             </button>
@@ -437,69 +453,74 @@ export function ClientPortalView() {
       )}
 
       {/* 4. VISTA DE TARJETA DE LEALTAD DIGITAL CON QR SIEMPRE VISIBLE */}
-      {view === 'loyalty_card' && registeredClient && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* HEADER PRINCIPAL STICKY: CÓDIGO QR SIEMPRE VISIBLE EN LA POSICIÓN SUPERIOR */}
-          <div style={{ background: '#FFFFFF', borderRadius: '20px', padding: '20px', textAlign: 'center', border: '2px solid var(--secondary)', boxShadow: 'var(--shadow-md)', position: 'sticky', top: '10px', zIndex: 80 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <div style={{ textAlign: 'left' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Mi Código de Lealtad
-                </span>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text)', margin: 0 }}>
-                  {registeredClient.full_name}
-                </h2>
+      {view === 'loyalty_card' && registeredClient && (() => {
+        const currentStampsCount = registeredClient.current_stamps || 0;
+        const matchedStampObj = stampImagesMap.find(s => s.stamp_count === currentStampsCount || s.nivel_sello === currentStampsCount);
+        const displayStampImg = registeredClient.wallet_hero_image_url || (matchedStampObj ? (matchedStampObj.image_url || matchedStampObj.wallet_hero_url || matchedStampObj.imagen_url) : null);
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* HEADER PRINCIPAL STICKY: CÓDIGO QR SIEMPRE VISIBLE EN LA POSICIÓN SUPERIOR */}
+            <div style={{ background: '#FFFFFF', borderRadius: '20px', padding: '20px', textAlign: 'center', border: '2px solid var(--secondary)', boxShadow: 'var(--shadow-md)', position: 'sticky', top: '10px', zIndex: 80 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div style={{ textAlign: 'left' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Mi Código de Lealtad
+                  </span>
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text)', margin: 0 }}>
+                    {registeredClient.full_name}
+                  </h2>
+                </div>
+                <Coffee size={28} color="var(--primary)" />
               </div>
-              <Coffee size={28} color="var(--primary)" />
-            </div>
 
-            {/* CÓDIGO QR VISIBLE DESTACADO */}
-            <div style={{ background: '#FAFDF7', padding: '16px', borderRadius: '16px', display: 'inline-block', border: '2px solid var(--secondary)' }}>
-              <QRCodeSVG 
-                value={registeredClient.phone || registeredClient.phone_number} 
-                size={160}
-                level="H"
-                includeMargin={true}
-              />
-              <div style={{ color: 'var(--text)', fontWeight: 800, fontSize: '0.9rem', marginTop: '6px' }}>
-                Tel: {registeredClient.phone || registeredClient.phone_number}
-              </div>
-            </div>
-          </div>
-
-          {/* SECCIÓN VISUAL DE LA TARJETA DE SELLOS */}
-          <div style={{
-            background: '#FFFFFF',
-            borderRadius: '20px',
-            padding: '16px',
-            textAlign: 'center',
-            border: '2px solid var(--primary)',
-            boxShadow: 'var(--shadow-md)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>
-                🏷️ Tarjeta de Sellos
-              </span>
-              <span className="badge badge-success" style={{ background: '#788C5A', color: '#FFF', fontWeight: 800, padding: '4px 10px', borderRadius: '12px' }}>
-                {registeredClient.current_stamps || 0} / {registeredClient.max_stamps || 10} Sellos
-              </span>
-            </div>
-
-            {/* Imagen Dinámica del Sello desde ImgBB */}
-            {registeredClient.wallet_hero_image_url ? (
-              <div style={{ borderRadius: '14px', overflow: 'hidden', border: '1px solid #E8DFD1', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-                <img 
-                  src={registeredClient.wallet_hero_image_url} 
-                  alt={`Tarjeta con ${registeredClient.current_stamps || 0} sellos`} 
-                  style={{ width: '100%', maxHeight: '220px', objectFit: 'contain', display: 'block', background: '#FAF7F2' }} 
+              {/* CÓDIGO QR VISIBLE DESTACADO */}
+              <div style={{ background: '#FAFDF7', padding: '16px', borderRadius: '16px', display: 'inline-block', border: '2px solid var(--secondary)' }}>
+                <QRCodeSVG 
+                  value={registeredClient.phone || registeredClient.phone_number} 
+                  size={160}
+                  level="H"
+                  includeMargin={true}
                 />
+                <div style={{ color: 'var(--text)', fontWeight: 800, fontSize: '0.9rem', marginTop: '6px' }}>
+                  Tel: {registeredClient.phone || registeredClient.phone_number}
+                </div>
               </div>
-            ) : (
-              <div style={{ padding: '20px', background: '#FAF7F2', borderRadius: '14px', color: '#734F2F', fontSize: '0.85rem' }}>
-                Cargando imagen de la tarjeta de sellos...
+            </div>
+
+            {/* SECCIÓN VISUAL DE LA TARJETA DE SELLOS */}
+            <div style={{
+              background: '#FFFFFF',
+              borderRadius: '20px',
+              padding: '16px',
+              textAlign: 'center',
+              border: '2px solid var(--primary)',
+              boxShadow: 'var(--shadow-md)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>
+                  🏷️ Tarjeta de Sellos
+                </span>
+                <span className="badge badge-success" style={{ background: '#788C5A', color: '#FFF', fontWeight: 800, padding: '4px 10px', borderRadius: '12px' }}>
+                  {currentStampsCount} / {registeredClient.max_stamps || 10} Sellos
+                </span>
               </div>
-            )}
-          </div>
+
+              {/* Imagen Dinámica del Sello desde ImgBB */}
+              {displayStampImg ? (
+                <div style={{ borderRadius: '14px', overflow: 'hidden', border: '1px solid #E8DFD1', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+                  <img 
+                    src={displayStampImg} 
+                    alt={`Tarjeta con ${currentStampsCount} sellos`} 
+                    style={{ width: '100%', maxHeight: '220px', objectFit: 'contain', display: 'block', background: '#FAF7F2' }} 
+                  />
+                </div>
+              ) : (
+                <div style={{ padding: '20px', background: '#FAF7F2', borderRadius: '14px', color: '#734F2F', fontSize: '0.85rem' }}>
+                  Cargando imagen de la tarjeta de sellos ({currentStampsCount} sellos)...
+                </div>
+              )}
+            </div>
 
           {/* TARJETA DE PUNTOS Y RECOMPENSAS */}
           <div style={{ background: 'linear-gradient(135deg, var(--primary) 0%, #5E7044 100%)', color: 'white', borderRadius: '20px', padding: '20px', boxShadow: 'var(--shadow-md)', textAlign: 'center' }}>

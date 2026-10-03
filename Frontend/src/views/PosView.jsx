@@ -417,10 +417,18 @@ export const PosView = () => {
               <ShieldCheck size={12} style={{ display: 'inline', marginRight: '4px' }} />
               Cliente Encontrado
             </span>
-            <div style={{ textAlign: 'right' }}>
-              <span style={{ fontSize: '11px', color: '#734F2F', opacity: 0.7, fontWeight: 700 }}>SALDO ACTUAL</span>
-              <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#788C5A' }}>
-                <span id="lblPuntos">{customer.current_points}</span> pts
+            <div style={{ textAlign: 'right', display: 'flex', gap: '14px', alignItems: 'center' }}>
+              <div>
+                <span style={{ fontSize: '10px', color: '#734F2F', opacity: 0.8, fontWeight: 700, display: 'block' }}>SELLOS</span>
+                <span className="badge badge-success" style={{ background: '#788C5A', color: '#FFF', fontWeight: 800 }}>
+                  🏷️ {customer.current_stamps || 0} / 10
+                </span>
+              </div>
+              <div>
+                <span style={{ fontSize: '10px', color: '#734F2F', opacity: 0.8, fontWeight: 700, display: 'block' }}>PUNTOS</span>
+                <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#788C5A' }}>
+                  <span id="lblPuntos">{customer.current_points || 0}</span> pts
+                </div>
               </div>
             </div>
           </div>
@@ -461,7 +469,7 @@ export const PosView = () => {
 
           <div className="form-group">
             <label id="lblInputMonto">
-              {modalidad === 'monto' ? 'Monto consumido ($)' : modalidad === 'visita' ? 'Puntos fijos por visita' : 'Cantidad de puntos directos'}
+              {modalidad === 'monto' ? 'Monto consumido ($ MXN)' : modalidad === 'visita' ? 'Puntos fijos por visita' : 'Cantidad de puntos directos'}
             </label>
             <input
               type="number"
@@ -471,9 +479,22 @@ export const PosView = () => {
             />
           </div>
 
-          <p id="reglaTexto" style={{ fontSize: '12px', textAlign: 'center', color: '#734F2F', marginBottom: '12px' }}>
-            {modalidad === 'monto' ? 'Regla: $10 MXN = 1 Punto' : 'Acumulación de Puntos'} | Puntos a sumar: <b id="lblPuntosCalculados" style={{ color: '#788C5A' }}>{puntosCalculados} pts</b>
-          </p>
+          {/* Resumen de Bonificación Distintiva (Puntos + Sellos) */}
+          <div style={{ background: '#FAF7F2', padding: '12px', borderRadius: '12px', border: '1px solid #E8DFD1', marginBottom: '14px', textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', color: '#734F2F', fontWeight: 700, marginBottom: '6px' }}>
+              {modalidad === 'monto' && activeRules.length > 0
+                ? `Regla Activa BD: Por cada $${parseFloat(activeRules[0].monto_dinero).toFixed(2)} MXN ➔ +${activeRules[0].puntos_otorgados} Pts`
+                : 'Acumulación Estándar'}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', alignItems: 'center' }}>
+              <span style={{ fontSize: '14px', fontWeight: 800, color: '#788C5A' }}>
+                ☕ +{puntosCalculados} Puntos
+              </span>
+              <span style={{ fontSize: '14px', fontWeight: 800, color: '#734F2F' }}>
+                🏷️ +1 Sello ({(customer.current_stamps || 0) >= 10 ? 'Llegó a 10 Sellos' : `Avanza a ${Math.min(10, (customer.current_stamps || 0) + 1)}/10`})
+              </span>
+            </div>
+          </div>
 
           <button className="btn btn-primary" onClick={handleAcumularPuntos} disabled={procesandoPuntos}>
             <PlusCircle size={18} />
