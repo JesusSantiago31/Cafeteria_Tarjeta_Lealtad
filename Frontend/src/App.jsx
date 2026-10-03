@@ -140,6 +140,14 @@ export function App() {
               <div className="form-group" style={{ marginBottom: '1.25rem' }}>
                 <label>NIP de Seguridad</label>
                 <input
+                  type="text"
+                  name="username"
+                  value="admin"
+                  readOnly
+                  style={{ display: 'none' }}
+                  autoComplete="username"
+                />
+                <input
                   type="password"
                   required
                   maxLength={6}

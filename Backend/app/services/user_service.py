@@ -142,10 +142,12 @@ class UserService:
 
             query = query.order("created_at", desc=True).range(skip, skip + limit - 1)
             res = query.execute()
-            total_count = res.count if res.count is not None else len(res.data)
-            return res.data, total_count
+            data = res.data or []
+            total_count = res.count if res.count is not None else len(data)
+            return data, total_count
         except Exception as e:
-            handle_supabase_error(e)
+            print(f"[UserService] Supabase get_users warning: {e}")
+            return [], 0
 
     def get_user_by_id(self, user_id: str) -> dict:
         """Fetch single user by UUID."""
