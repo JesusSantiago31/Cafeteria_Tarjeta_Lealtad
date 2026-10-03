@@ -148,6 +148,7 @@ export function App() {
                   onChange={(e) => setPinInput(e.target.value)}
                   style={{ textAlign: 'center', fontSize: '1.4rem', letterSpacing: '4px', padding: '10px' }}
                   autoFocus
+                  autoComplete="current-password"
                 />
                 <span style={{ fontSize: '0.72rem', color: '#9E7D5E', marginTop: '4px', display: 'block' }}>
                   NIP por defecto: <b>1234</b>

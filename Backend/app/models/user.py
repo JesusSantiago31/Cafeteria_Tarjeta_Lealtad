@@ -1,14 +1,14 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserBase(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=150, description="Customer's full name")
     last_name: Optional[str] = Field(default="", max_length=100, description="Customer's last name (optional)")
-    email: EmailStr = Field(..., description="Unique customer email address")
-    phone: Optional[str] = Field(None, max_length=20, description="Customer's phone number")
+    email: Optional[str] = Field(default="", description="Customer email address")
+    phone: Optional[str] = Field(default="", max_length=50, description="Customer's phone number")
 
 
 class UserCreate(UserBase):
@@ -23,8 +23,8 @@ class UserUpdate(BaseModel):
     first_name: Optional[str] = Field(None, min_length=1, max_length=150)
     last_name: Optional[str] = Field(default="", max_length=100)
 
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = Field(None, max_length=20)
+    email: Optional[str] = None
+    phone: Optional[str] = Field(None, max_length=50)
     is_active: Optional[bool] = None
     current_points: Optional[int] = None
     total_points_earned: Optional[int] = None
@@ -41,13 +41,13 @@ class UserPointsUpdate(BaseModel):
 
 class UserResponse(UserBase):
     id: UUID
-    loyalty_code: str
+    loyalty_code: Optional[str] = ""
     current_points: int = 0
     total_points_earned: int = 0
     total_points_spent: int = 0
     total_purchases_count: int = 0
     is_active: bool = True
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[Any] = None
+    updated_at: Optional[Any] = None
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
