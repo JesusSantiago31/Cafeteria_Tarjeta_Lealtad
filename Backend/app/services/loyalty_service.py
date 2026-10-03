@@ -25,9 +25,23 @@ class LoyaltyService:
     def get_points_rules(self) -> List[dict]:
         try:
             res = self.db.table("points_rules").select("*").execute()
-            return res.data if res.data else []
+            if res.data and len(res.data) > 0:
+                return res.data
+            return [{
+                "id": "default",
+                "monto_dinero": 10.0,
+                "puntos_otorgados": 1,
+                "descripcion": "Por cada $10.00 consumidos se otorga 1 punto",
+                "is_active": True
+            }]
         except Exception as e:
-            return []
+            return [{
+                "id": "default",
+                "monto_dinero": 10.0,
+                "puntos_otorgados": 1,
+                "descripcion": "Por cada $10.00 consumidos se otorga 1 punto",
+                "is_active": True
+            }]
 
     def create_points_rule(self, rule_data: PointsRuleCreate) -> dict:
         data = rule_data.model_dump(exclude_unset=True)

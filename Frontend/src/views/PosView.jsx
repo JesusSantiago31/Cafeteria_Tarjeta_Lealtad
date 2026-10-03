@@ -23,6 +23,7 @@ export const PosView = () => {
   const [modalidad, setModalidad] = useState('monto');
   const [valorAcumular, setValorAcumular] = useState('0.00');
   const [puntosCalculados, setPuntosCalculados] = useState(0);
+  const [sellosSumar, setSellosSumar] = useState(1);
   const [procesandoPuntos, setProcesandoPuntos] = useState(false);
   const [activeRules, setActiveRules] = useState([]);
 
@@ -269,16 +270,19 @@ export const PosView = () => {
 
   const handleAcumularPuntos = async () => {
     if (!customer) return;
-    if (puntosCalculados <= 0) {
-      alert("El valor ingresado resulta en 0 puntos a sumar.");
+    const ptsToAdd = parseInt(puntosCalculados, 10) || 0;
+    const sellosToAdd = parseInt(sellosSumar, 10) || 0;
+
+    if (ptsToAdd <= 0 && sellosToAdd <= 0) {
+      alert("Por favor ingresa al menos puntos o sellos a sumar.");
       return;
     }
 
     setProcesandoPuntos(true);
     try {
-      const nuevosPuntosActuales = (customer.current_points || 0) + puntosCalculados;
-      const nuevosTotalEarned = (customer.total_points_earned || 0) + puntosCalculados;
-      const nuevosSellos = Math.min(10, (customer.current_stamps || 0) + 1);
+      const nuevosPuntosActuales = Math.max(0, (customer.current_points || 0) + ptsToAdd);
+      const nuevosTotalEarned = Math.max(0, (customer.total_points_earned || 0) + ptsToAdd);
+      const nuevosSellos = Math.min(10, Math.max(0, (customer.current_stamps || 0) + sellosToAdd));
 
       const updated = await userService.updateUser(customer.id, {
         current_points: nuevosPuntosActuales,
@@ -287,10 +291,10 @@ export const PosView = () => {
       });
 
       setCustomer(updated);
-      alert(`¡Puntos acumulados con éxito! +${puntosCalculados} pts y +1 Sello (${nuevosSellos}/10). Nuevo Saldo: ${updated.current_points} pts.`);
+      alert(`¡Actualizado con éxito!\n\n☕ Puntos: +${ptsToAdd} (Nuevo saldo: ${updated.current_points} pts)\n🏷️ Sellos: +${sellosToAdd} (Total actual: ${nuevosSellos}/10 sellos)\n\nGoogle Wallet y la tarjeta Web del cliente se han actualizado automáticamente con su nueva imagen.`);
       setValorAcumular('0.00');
     } catch (err) {
-      alert("Error al acumular puntos: " + err.message);
+      alert("Error al actualizar cliente: " + err.message);
     } finally {
       setProcesandoPuntos(false);
     }
@@ -467,9 +471,9 @@ export const PosView = () => {
             </div>
           </div>
 
-          <div className="form-group">
+          <div className="form-group" style={{ marginBottom: '16px' }}>
             <label id="lblInputMonto">
-              {modalidad === 'monto' ? 'Monto consumido ($ MXN)' : modalidad === 'visita' ? 'Puntos fijos por visita' : 'Cantidad de puntos directos'}
+              {modalidad === 'monto' ? '☕ 1. Monto consumido ($ MXN) ➔ Bonifica Puntos' : modalidad === 'visita' ? '☕ Puntos fijos por visita' : '☕ Cantidad de puntos directos'}
             </label>
             <input
               type="number"
@@ -477,28 +481,90 @@ export const PosView = () => {
               value={valorAcumular}
               onChange={(e) => setValorAcumular(e.target.value)}
             />
+            {modalidad === 'monto' && (
+              <div style={{ fontSize: '11px', color: '#734F2F', marginTop: '6px', background: '#FAFDF7', padding: '8px 12px', borderRadius: '10px', border: '1px solid #CFD989', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>
+                  <strong>Regla BD:</strong> {activeRules.length > 0
+                    ? `Por cada $${parseFloat(activeRules[0].monto_dinero).toFixed(2)} MXN ➔ +${activeRules[0].puntos_otorgados} ${activeRules[0].puntos_otorgados === 1 ? 'punto' : 'puntos'}`
+                    : 'Por cada $10.00 MXN ➔ +1 punto'}
+                </span>
+                <span style={{ fontWeight: 800, color: '#788C5A' }}>
+                  Total: +{puntosCalculados} pts
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* Resumen de Bonificación Distintiva (Puntos + Sellos) */}
-          <div style={{ background: '#FAF7F2', padding: '12px', borderRadius: '12px', border: '1px solid #E8DFD1', marginBottom: '14px', textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', color: '#734F2F', fontWeight: 700, marginBottom: '6px' }}>
-              {modalidad === 'monto' && activeRules.length > 0
-                ? `Regla Activa BD: Por cada $${parseFloat(activeRules[0].monto_dinero).toFixed(2)} MXN ➔ +${activeRules[0].puntos_otorgados} Pts`
-                : 'Acumulación Estándar'}
+          {/* CONTROL INDEPENDIENTE DE SELLOS */}
+          <div className="form-group" style={{ background: '#FAF7F2', padding: '14px', borderRadius: '14px', border: '1px solid #E8DFD1', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 800, color: '#734F2F', margin: 0 }}>
+                🏷️ 2. Sellos a Sumar (Totalmente Independiente de Puntos)
+              </label>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', alignItems: 'center' }}>
-              <span style={{ fontSize: '14px', fontWeight: 800, color: '#788C5A' }}>
+
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+              <button
+                type="button"
+                className={`btn ${parseInt(sellosSumar, 10) === 0 ? 'btn-primary' : 'btn-outline'}`}
+                style={{ flex: 1, padding: '6px', fontSize: '0.78rem' }}
+                onClick={() => setSellosSumar(0)}
+              >
+                0 Sellos
+              </button>
+
+              <button
+                type="button"
+                className={`btn ${parseInt(sellosSumar, 10) === 1 ? 'btn-primary' : 'btn-outline'}`}
+                style={{ flex: 1, padding: '6px', fontSize: '0.78rem' }}
+                onClick={() => setSellosSumar(1)}
+              >
+                +1 Sello
+              </button>
+
+              <button
+                type="button"
+                className={`btn ${parseInt(sellosSumar, 10) === 2 ? 'btn-primary' : 'btn-outline'}`}
+                style={{ flex: 1, padding: '6px', fontSize: '0.78rem' }}
+                onClick={() => setSellosSumar(2)}
+              >
+                +2 Sellos
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <input
+                type="number"
+                min="0"
+                max="10"
+                value={sellosSumar}
+                onChange={(e) => setSellosSumar(parseInt(e.target.value, 10) || 0)}
+                style={{ width: '80px', textAlign: 'center', fontWeight: 800 }}
+              />
+              <span style={{ fontSize: '0.8rem', color: '#734F2F', fontWeight: 700 }}>
+                Resultado: {(customer.current_stamps || 0)} ➔ {Math.min(10, Math.max(0, (customer.current_stamps || 0) + (parseInt(sellosSumar, 10) || 0)))} / 10 sellos
+              </span>
+            </div>
+          </div>
+
+          {/* Resumen de Confirmación de Acumulación */}
+          <div style={{ background: '#EAF3DE', padding: '12px', borderRadius: '12px', border: '1px solid #C0DD97', marginBottom: '16px', textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', color: '#3B621D', fontWeight: 800, textTransform: 'uppercase', marginBottom: '4px' }}>
+              Resumen a Registrar
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', alignItems: 'center' }}>
+              <span style={{ fontSize: '15px', fontWeight: 900, color: '#3B621D' }}>
                 ☕ +{puntosCalculados} Puntos
               </span>
-              <span style={{ fontSize: '14px', fontWeight: 800, color: '#734F2F' }}>
-                🏷️ +1 Sello ({(customer.current_stamps || 0) >= 10 ? 'Llegó a 10 Sellos' : `Avanza a ${Math.min(10, (customer.current_stamps || 0) + 1)}/10`})
+              <span style={{ fontSize: '15px', fontWeight: 900, color: '#734F2F' }}>
+                🏷️ +{sellosSumar} Sello(s)
               </span>
             </div>
           </div>
 
           <button className="btn btn-primary" onClick={handleAcumularPuntos} disabled={procesandoPuntos}>
             <PlusCircle size={18} />
-            <span>{procesandoPuntos ? 'Procesando...' : 'Acumular Puntos'}</span>
+            <span>{procesandoPuntos ? 'Actualizando...' : 'Registrar Puntos y Sellos'}</span>
           </button>
 
           <button className="btn btn-accent" style={{ marginTop: '12px' }} onClick={handleOpenCanje}>

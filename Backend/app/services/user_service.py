@@ -265,6 +265,18 @@ class UserService:
                 description=desc
             )
 
+        # Lookup and attach stamp image matching updated current_stamps
+        if "current_stamps" in update_data and update_data["current_stamps"] is not None:
+            target_stamps = int(update_data["current_stamps"])
+            try:
+                stamp_res = self.db.table("stamp_images").select("image_url, wallet_hero_url").eq("stamp_count", target_stamps).limit(1).execute()
+                if stamp_res.data:
+                    img = stamp_res.data[0].get("wallet_hero_url") or stamp_res.data[0].get("image_url")
+                    if img:
+                        update_data["wallet_hero_image_url"] = img
+            except Exception as e:
+                print(f"[UserService] Error updating stamp image for {target_stamps} sellos: {e}")
+
         res = (
             self.db.table("users")
             .update(update_data)
@@ -276,7 +288,7 @@ class UserService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update user."
             )
-        updated_user = res.data[0]
+        updated_user = self._enrich_user_stamp_image(res.data[0])
 
         # Trigger remote Google Wallet Push sync
         try:

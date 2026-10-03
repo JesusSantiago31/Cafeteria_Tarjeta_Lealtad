@@ -20,6 +20,10 @@ export function ClientPortalView() {
   const [redeemingId, setRedeemingId] = useState(null);
   const [stampImagesMap, setStampImagesMap] = useState([]);
 
+  const currentStampsCount = registeredClient?.current_stamps || 0;
+  const matchedStampObj = stampImagesMap.find(s => s.stamp_count === currentStampsCount || s.nivel_sello === currentStampsCount);
+  const displayStampImg = registeredClient?.wallet_hero_image_url || (matchedStampObj ? (matchedStampObj.image_url || matchedStampObj.wallet_hero_url || matchedStampObj.imagen_url) : null);
+
   // Cargar mapeo global de imágenes de sellos como respaldo
   useEffect(() => {
     const fetchStampImagesMap = async () => {
@@ -453,13 +457,8 @@ export function ClientPortalView() {
       )}
 
       {/* 4. VISTA DE TARJETA DE LEALTAD DIGITAL CON QR SIEMPRE VISIBLE */}
-      {view === 'loyalty_card' && registeredClient && (() => {
-        const currentStampsCount = registeredClient.current_stamps || 0;
-        const matchedStampObj = stampImagesMap.find(s => s.stamp_count === currentStampsCount || s.nivel_sello === currentStampsCount);
-        const displayStampImg = registeredClient.wallet_hero_image_url || (matchedStampObj ? (matchedStampObj.image_url || matchedStampObj.wallet_hero_url || matchedStampObj.imagen_url) : null);
-
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {view === 'loyalty_card' && registeredClient && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* HEADER PRINCIPAL STICKY: CÓDIGO QR SIEMPRE VISIBLE EN LA POSICIÓN SUPERIOR */}
             <div style={{ background: '#FFFFFF', borderRadius: '20px', padding: '20px', textAlign: 'center', border: '2px solid var(--secondary)', boxShadow: 'var(--shadow-md)', position: 'sticky', top: '10px', zIndex: 80 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
