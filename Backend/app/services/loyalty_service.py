@@ -86,20 +86,34 @@ class LoyaltyService:
 
     def create_or_update_stamp_level(self, level_data: StampLevelCreate) -> dict:
         data = level_data.model_dump(exclude_unset=True)
-        # Check if exists
-        check = self.db.table("stamp_images").select("*").eq("stamp_count", data["nivel_sello"]).execute()
-        if check.data:
-            # Update
-            res = self.db.table("stamp_images").update({"image_url": data["imagen_url"], "wallet_hero_url": data["imagen_url"]}).eq("stamp_count", data["nivel_sello"]).execute()
-            return res.data[0]
-        else:
-            # Insert
-            res = self.db.table("stamp_images").insert({
-                "stamp_count": data["nivel_sello"],
-                "image_url": data["imagen_url"],
-                "wallet_hero_url": data["imagen_url"]
-            }).execute()
-            return res.data[0]
+        count = data.get("stamp_count") if data.get("stamp_count") is not None else data.get("nivel_sello", 0)
+        url = data.get("image_url") or data.get("imagen_url") or ""
+
+        try:
+            # Check if exists
+            check = self.db.table("stamp_images").select("*").eq("stamp_count", count).execute()
+            if check.data:
+                # Update
+                res = self.db.table("stamp_images").update({
+                    "image_url": url,
+                    "wallet_hero_url": url
+                }).eq("stamp_count", count).execute()
+                if res.data:
+                    return res.data[0]
+            else:
+                # Insert
+                res = self.db.table("stamp_images").insert({
+                    "stamp_count": count,
+                    "image_url": url,
+                    "wallet_hero_url": url,
+                    "nombre_sello": f"{count} Sello(s)"
+                }).execute()
+                if res.data:
+                    return res.data[0]
+        except Exception as e:
+            handle_supabase_error(e)
+
+        return {"stamp_count": count, "image_url": url, "wallet_hero_url": url}
 
     def delete_stamp_level(self, nivel_sello: int) -> dict:
         self.db.table("stamp_images").delete().eq("stamp_count", nivel_sello).execute()

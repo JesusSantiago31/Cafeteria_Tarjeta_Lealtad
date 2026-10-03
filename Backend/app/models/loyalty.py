@@ -43,17 +43,27 @@ class WalletSettingResponse(WalletSettingBase):
 
 # 3. Niveles de Sellos (Imágenes)
 class StampLevelBase(BaseModel):
-    nivel_sello: int = Field(..., ge=0, description="Número de sello (0, 1, 2, ...)")
-    imagen_url: str = Field(..., description="URL de ImgBB para la imagen del sello")
+    stamp_count: Optional[int] = Field(None, ge=0)
+    nivel_sello: Optional[int] = Field(None, ge=0)
+    image_url: Optional[str] = None
+    imagen_url: Optional[str] = None
+    wallet_hero_url: Optional[str] = None
+    nombre_sello: Optional[str] = None
 
-class StampLevelCreate(StampLevelBase):
-    pass
+    model_config = ConfigDict(extra="allow")
+
+class StampLevelCreate(BaseModel):
+    stamp_count: Optional[int] = None
+    nivel_sello: Optional[int] = None
+    image_url: Optional[str] = None
+    imagen_url: Optional[str] = None
 
 class StampLevelUpdate(BaseModel):
-    imagen_url: str
+    imagen_url: Optional[str] = None
+    image_url: Optional[str] = None
 
 class StampLevelResponse(StampLevelBase):
-    id: UUID
+    id: Optional[UUID] = None
     created_at: Optional[datetime] = None
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, extra="allow")
