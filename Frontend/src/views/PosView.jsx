@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Camera, AlertCircle, PlusCircle, Gift, X, QrCode, ShieldCheck, Sparkles, CheckCircle2, Video } from 'lucide-react';
-import { userService, productService } from '../services/api';
+import { userService, productService, loyaltyService } from '../services/api';
 import { CustomerModal } from '../components/CustomerModal';
 import jsQR from 'jsqr';
 import { Html5QrcodeScanner } from 'html5-qrcode';
@@ -24,6 +24,7 @@ export const PosView = () => {
   const [valorAcumular, setValorAcumular] = useState('0.00');
   const [puntosCalculados, setPuntosCalculados] = useState(0);
   const [procesandoPuntos, setProcesandoPuntos] = useState(false);
+  const [activeRules, setActiveRules] = useState([]);
 
   // Catálogo de Canje
   const [showCanje, setShowCanje] = useState(false);
@@ -31,16 +32,43 @@ export const PosView = () => {
 
   const fileInputRef = useRef(null);
 
+  // Cargar Reglas de Puntos dinámicas desde la BD
+  useEffect(() => {
+    const fetchRules = async () => {
+      try {
+        const rules = await loyaltyService.getRules();
+        if (rules && rules.length > 0) {
+          setActiveRules(rules.filter(r => r.is_active !== false));
+        }
+      } catch (err) {
+        console.error("Error al obtener reglas de puntos para Caja POS:", err);
+      }
+    };
+    fetchRules();
+  }, []);
+
+  // Calcular Puntos dinámicamente según la regla activa configurada por el administrador
   useEffect(() => {
     const val = parseFloat(valorAcumular) || 0;
     if (modalidad === 'monto') {
-      setPuntosCalculados(Math.floor(val / 10));
+      if (activeRules.length > 0) {
+        const rule = activeRules[0]; // Usar la primera regla activa
+        if (rule.monto_dinero > 0) {
+          const pts = Math.floor(val / rule.monto_dinero) * rule.puntos_otorgados;
+          setPuntosCalculados(pts);
+        } else {
+          setPuntosCalculados(Math.floor(val / 10));
+        }
+      } else {
+        // Regla por defecto ($10 = 1 punto) si no hay reglas configuradas en BD
+        setPuntosCalculados(Math.floor(val / 10));
+      }
     } else if (modalidad === 'directo') {
       setPuntosCalculados(parseInt(val) || 0);
     } else if (modalidad === 'visita') {
       setPuntosCalculados(parseInt(val) || 0);
     }
-  }, [modalidad, valorAcumular]);
+  }, [modalidad, valorAcumular, activeRules]);
 
   // Manejador del escáner con cámara en vivo
   useEffect(() => {
@@ -250,14 +278,16 @@ export const PosView = () => {
     try {
       const nuevosPuntosActuales = (customer.current_points || 0) + puntosCalculados;
       const nuevosTotalEarned = (customer.total_points_earned || 0) + puntosCalculados;
+      const nuevosSellos = Math.min(10, (customer.current_stamps || 0) + 1);
 
       const updated = await userService.updateUser(customer.id, {
         current_points: nuevosPuntosActuales,
         total_points_earned: nuevosTotalEarned,
+        current_stamps: nuevosSellos,
       });
 
       setCustomer(updated);
-      alert(`¡Puntos acumulados con éxito! +${puntosCalculados} pts. Nuevo Saldo: ${updated.current_points} pts.`);
+      alert(`¡Puntos acumulados con éxito! +${puntosCalculados} pts y +1 Sello (${nuevosSellos}/10). Nuevo Saldo: ${updated.current_points} pts.`);
       setValorAcumular('0.00');
     } catch (err) {
       alert("Error al acumular puntos: " + err.message);

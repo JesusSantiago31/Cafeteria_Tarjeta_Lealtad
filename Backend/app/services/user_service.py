@@ -149,6 +149,25 @@ class UserService:
             print(f"[UserService] Supabase get_users warning: {e}")
             return [], 0
 
+    def _enrich_user_stamp_image(self, user: dict) -> dict:
+        """Fallback helper to attach wallet_hero_image_url from stamp_images if user's field is empty."""
+        if not user:
+            return user
+        
+        stamps = user.get("current_stamps") if user.get("current_stamps") is not None else 0
+        user["current_stamps"] = stamps
+        user["max_stamps"] = user.get("max_stamps") or 10
+
+        if not user.get("wallet_hero_image_url"):
+            try:
+                stamp_res = self.db.table("stamp_images").select("image_url, wallet_hero_url").eq("stamp_count", stamps).limit(1).execute()
+                if stamp_res.data:
+                    img = stamp_res.data[0].get("wallet_hero_url") or stamp_res.data[0].get("image_url")
+                    user["wallet_hero_image_url"] = img
+            except Exception:
+                pass
+        return user
+
     def get_user_by_id(self, user_id: str) -> dict:
         """Fetch single user by UUID."""
         try:
@@ -158,7 +177,7 @@ class UserService:
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"User with ID '{user_id}' not found."
                 )
-            return res.data[0]
+            return self._enrich_user_stamp_image(res.data[0])
         except HTTPException:
             raise
         except Exception as e:
@@ -201,7 +220,7 @@ class UserService:
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Cliente con teléfono o código '{loyalty_code}' no encontrado."
                 )
-            return res.data[0]
+            return self._enrich_user_stamp_image(res.data[0])
         except HTTPException:
             raise
         except Exception as e:

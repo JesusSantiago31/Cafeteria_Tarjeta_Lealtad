@@ -77,8 +77,12 @@ class LoyaltyService:
 
     # --- Stamp Images ---
     def get_stamp_levels(self) -> List[dict]:
-        res = self.db.table("stamp_images").select("*").order("stamp_count").execute()
-        return res.data if res.data else []
+        try:
+            res = self.db.table("stamp_images").select("*").order("stamp_count").execute()
+            return res.data if res.data else []
+        except Exception as e:
+            print(f"[LoyaltyService] Error fetching stamp_images: {e}")
+            return []
 
     def create_or_update_stamp_level(self, level_data: StampLevelCreate) -> dict:
         data = level_data.model_dump(exclude_unset=True)

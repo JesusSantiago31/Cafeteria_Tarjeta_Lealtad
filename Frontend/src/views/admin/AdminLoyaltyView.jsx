@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Plus, Trash2, Save, Image as ImageIcon, Award, CheckCircle, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Image as ImageIcon, Award, CheckCircle, RefreshCw } from 'lucide-react';
 import { loyaltyService } from '../../services/api';
 
 export const AdminLoyaltyView = () => {
   const [rules, setRules] = useState([]);
   const [stampImages, setStampImages] = useState([]);
-  const [maxStamps, setMaxStamps] = useState(10);
   const [loading, setLoading] = useState(true);
 
   // Form states for new point rule
@@ -18,21 +17,16 @@ export const AdminLoyaltyView = () => {
   const [stampCountInput, setStampCountInput] = useState(0);
   const [imageUrlInput, setImageUrlInput] = useState('');
 
-  const [savingSettings, setSavingSettings] = useState(false);
   const [msg, setMsg] = useState(null);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [rulesData, settingsData, stampsData] = await Promise.all([
+      const [rulesData, stampsData] = await Promise.all([
         loyaltyService.getRules(),
-        loyaltyService.getSettings(),
         loyaltyService.getStampLevels()
       ]);
       setRules(rulesData || []);
-      if (settingsData && settingsData.max_sellos) {
-        setMaxStamps(settingsData.max_sellos);
-      }
       setStampImages(stampsData || []);
     } catch (err) {
       console.error("Error al obtener datos de lealtad:", err);
@@ -56,17 +50,17 @@ export const AdminLoyaltyView = () => {
       await loyaltyService.createRule({
         monto_dinero: parseFloat(newMonto),
         puntos_otorgados: parseInt(newPuntos, 10),
-        descripcion: newDescripcion || `Por cada $${newMonto} se otorgan ${newPuntos} pts/sellos`,
+        descripcion: newDescripcion || `Por cada $${newMonto} consumidos se otorgan ${newPuntos} puntos`,
         is_active: true
       });
       setNewMonto('');
       setNewPuntos('');
       setNewDescripcion('');
-      setMsg("¡Regla guardada con éxito!");
+      setMsg("¡Regla de bonificación guardada con éxito!");
       setTimeout(() => setMsg(null), 3000);
       fetchData();
     } catch (err) {
-      alert("Error al guardar la regla.");
+      alert("Error al guardar la regla. Verifica los datos.");
     }
   };
 
@@ -78,19 +72,6 @@ export const AdminLoyaltyView = () => {
       } catch (err) {
         alert("No se pudo eliminar la regla.");
       }
-    }
-  };
-
-  const handleSaveSettings = async () => {
-    setSavingSettings(true);
-    try {
-      await loyaltyService.updateSettings({ max_sellos: parseInt(maxStamps, 10), is_active: true });
-      setMsg("¡Configuración de sello máximo actualizada!");
-      setTimeout(() => setMsg(null), 3000);
-    } catch (err) {
-      alert("Error al guardar la configuración.");
-    } finally {
-      setSavingSettings(false);
     }
   };
 
@@ -120,7 +101,7 @@ export const AdminLoyaltyView = () => {
     return (
       <div style={{ textAlign: 'center', padding: '3rem', color: '#734F2F' }}>
         <RefreshCw size={24} className="spin" />
-        <p>Cargando reglas y configuración de sellos...</p>
+        <p>Cargando datos desde la base de datos Supabase...</p>
       </div>
     );
   }
@@ -145,14 +126,14 @@ export const AdminLoyaltyView = () => {
         </div>
       )}
 
-      {/* SECCIÓN 1: Reglas de Bonificación de Puntos / Dinero */}
+      {/* SECCIÓN 1: Reglas de Bonificación de Puntos x Consumo */}
       <div className="card-client" style={{ margin: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
           <Award size={22} color="#734F2F" />
-          <h3 style={{ margin: 0, color: '#734F2F' }}>Reglas de Bonificación (Puntos x Consumo)</h3>
+          <h3 style={{ margin: 0, color: '#734F2F' }}>Reglas de Puntos por Consumo</h3>
         </div>
         <p style={{ fontSize: '0.85rem', color: '#666', marginTop: 0 }}>
-          Define la cantidad de dinero consumido para recibir determinada cantidad de puntos o sellos.
+          Configura cuántos <strong>PUNTOS</strong> se bonificarán a un cliente según la cantidad de dinero consumido en su compra.
         </p>
 
         {/* Formulario Nueva Regla */}
@@ -169,10 +150,10 @@ export const AdminLoyaltyView = () => {
             />
           </div>
           <div>
-            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#734F2F', display: 'block', marginBottom: '4px' }}>Puntos / Sellos</label>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#734F2F', display: 'block', marginBottom: '4px' }}>Puntos a Bonificar</label>
             <input
               type="number"
-              placeholder="Ej. 1"
+              placeholder="Ej. 10"
               value={newPuntos}
               onChange={(e) => setNewPuntos(e.target.value)}
               required
@@ -182,14 +163,14 @@ export const AdminLoyaltyView = () => {
             <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#734F2F', display: 'block', marginBottom: '4px' }}>Descripción Opcional</label>
             <input
               type="text"
-              placeholder="Ej. 1 sello por cada $50 de compra"
+              placeholder="Ej. Bonificación de 10 pts por cada $50"
               value={newDescripcion}
               onChange={(e) => setNewDescripcion(e.target.value)}
             />
           </div>
           <button type="submit" className="btn btn-primary" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Plus size={16} />
-            <span>Agregar</span>
+            <span>Agregar Regla</span>
           </button>
         </form>
 
@@ -199,7 +180,7 @@ export const AdminLoyaltyView = () => {
             <thead>
               <tr>
                 <th>Monto de Compra ($)</th>
-                <th>Puntos / Sellos Otorgados</th>
+                <th>Puntos Bonificados</th>
                 <th>Descripción</th>
                 <th style={{ textAlign: 'right' }}>Acciones</th>
               </tr>
@@ -208,14 +189,14 @@ export const AdminLoyaltyView = () => {
               {rules.length === 0 ? (
                 <tr>
                   <td colSpan="4" style={{ textAlign: 'center', color: '#999', padding: '1.5rem' }}>
-                    No hay reglas configuradas aún.
+                    No hay reglas de puntos configuradas en la base de datos.
                   </td>
                 </tr>
               ) : (
                 rules.map((rule) => (
                   <tr key={rule.id}>
                     <td><strong>${parseFloat(rule.monto_dinero).toFixed(2)} MXN</strong></td>
-                    <td><span className="badge badge-success">+{rule.puntos_otorgados} pts/sellos</span></td>
+                    <td><span className="badge badge-success">+{rule.puntos_otorgados} Pts</span></td>
                     <td style={{ fontSize: '0.85rem', color: '#555' }}>{rule.descripcion || 'Sin descripción'}</td>
                     <td style={{ textAlign: 'right' }}>
                       <button
@@ -234,46 +215,17 @@ export const AdminLoyaltyView = () => {
         </div>
       </div>
 
-      {/* SECCIÓN 2: Límite Máximo de Sellos en Tarjeta */}
-      <div className="card-client" style={{ margin: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-          <Settings size={22} color="#788C5A" />
-          <h3 style={{ margin: 0, color: '#734F2F' }}>Límite Máximo de Sellos</h3>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ width: '150px' }}>
-            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#734F2F', display: 'block', marginBottom: '4px' }}>Máximo de sellos</label>
-            <input
-              type="number"
-              min="1"
-              max="20"
-              value={maxStamps}
-              onChange={(e) => setMaxStamps(e.target.value)}
-            />
-          </div>
-          <button
-            className="btn btn-primary"
-            style={{ marginTop: '20px', padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '6px' }}
-            onClick={handleSaveSettings}
-            disabled={savingSettings}
-          >
-            <Save size={16} />
-            <span>{savingSettings ? "Guardando..." : "Guardar Límite"}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* SECCIÓN 3: Mapeo de Imágenes de ImgBB por Nivel de Sello (0 a 10) */}
+      {/* SECCIÓN 2: Galería de Imágenes de Sellos ImgBB (0 a 10 Sellos) */}
       <div className="card-client" style={{ margin: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
           <ImageIcon size={22} color="#E2A03F" />
-          <h3 style={{ margin: 0, color: '#734F2F' }}>Imágenes Dinámicas de Google Wallet / Web (ImgBB)</h3>
+          <h3 style={{ margin: 0, color: '#734F2F' }}>Imágenes de Sellos (Google Wallet & Web)</h3>
         </div>
         <p style={{ fontSize: '0.85rem', color: '#666', marginTop: 0 }}>
-          Asigna la URL de la imagen guardada en ImgBB para cada cantidad de sellos acumulados (0 hasta {maxStamps}).
+          Visualiza y actualiza las imágenes alojadas en <strong>ImgBB</strong> para cada estado de la tarjeta (de 0 a 10 sellos acumulados).
         </p>
 
-        {/* Modal / Formulario flotante rápido para editar imagen */}
+        {/* Modal / Formulario flotante rápido para editar imagen de sello */}
         {editingStamp !== null && (
           <form onSubmit={handleSaveStampImage} style={{
             background: '#FAF7F2',
@@ -282,7 +234,7 @@ export const AdminLoyaltyView = () => {
             border: '2px solid #788C5A',
             marginBottom: '16px'
           }}>
-            <h4 style={{ margin: '0 0 10px 0', color: '#734F2F' }}>Editar Imagen para {stampCountInput} Sello(s)</h4>
+            <h4 style={{ margin: '0 0 10px 0', color: '#734F2F' }}>Editar URL de Imagen ImgBB para {stampCountInput} Sello(s)</h4>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <input
                 type="url"
@@ -292,22 +244,23 @@ export const AdminLoyaltyView = () => {
                 style={{ flex: 1 }}
                 required
               />
-              <button type="submit" className="btn btn-primary" style={{ padding: '8px 16px' }}>Guardar</button>
+              <button type="submit" className="btn btn-primary" style={{ padding: '8px 16px' }}>Guardar URL</button>
               <button type="button" className="btn btn-outline" style={{ padding: '8px 16px' }} onClick={() => setEditingStamp(null)}>Cancelar</button>
             </div>
           </form>
         )}
 
-        {/* Galería de Tarjetas de Sellos */}
+        {/* Galería de Tarjetas de Sellos (0 a 10) */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
           gap: '16px',
           marginTop: '16px'
         }}>
-          {Array.from({ length: parseInt(maxStamps, 10) + 1 }, (_, i) => i).map((count) => {
+          {Array.from({ length: 11 }, (_, count) => {
             const levelData = stampImages.find(s => s.stamp_count === count || s.nivel_sello === count);
-            const currentUrl = levelData ? (levelData.image_url || levelData.imagen_url) : null;
+            const currentUrl = levelData ? (levelData.image_url || levelData.wallet_hero_url || levelData.imagen_url) : null;
+            const stampName = levelData ? (levelData.nombre_sello || `${count} Sello(s)`) : `${count} Sello(s)`;
 
             return (
               <div key={count} style={{
@@ -332,15 +285,28 @@ export const AdminLoyaltyView = () => {
                   borderRadius: '8px',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
+                  justify: 'center',
                   overflow: 'hidden',
-                  border: '1px dashed #CCC'
+                  border: '1px dashed #CCC',
+                  position: 'relative'
                 }}>
                   {currentUrl ? (
-                    <img src={currentUrl} alt={`Sello ${count}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img 
+                      src={currentUrl} 
+                      alt={stampName} 
+                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.style.display = 'none';
+                      }}
+                    />
                   ) : (
-                    <span style={{ fontSize: '0.75rem', color: '#999', textAlign: 'center', padding: '8px' }}>Sin Imagen</span>
+                    <span style={{ fontSize: '0.75rem', color: '#999', textAlign: 'center', padding: '8px' }}>Sin Imagen Registrada</span>
                   )}
+                </div>
+
+                <div style={{ fontSize: '0.72rem', color: '#666', fontWeight: 600, width: '100%', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                  {stampName}
                 </div>
 
                 <button
@@ -352,7 +318,7 @@ export const AdminLoyaltyView = () => {
                     setImageUrlInput(currentUrl || '');
                   }}
                 >
-                  {currentUrl ? 'Cambiar Imagen ImgBB' : '+ Agregar Imagen'}
+                  {currentUrl ? 'Cambiar Imagen ImgBB' : '+ Configurar URL ImgBB'}
                 </button>
               </div>
             );
