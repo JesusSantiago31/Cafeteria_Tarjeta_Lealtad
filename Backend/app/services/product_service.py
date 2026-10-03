@@ -164,25 +164,6 @@ class ProductService:
             "product": product,
             "remaining_points": new_current_points
         }
-
-
-
 product_service = ProductService()
 
-            updated_user_dict = {
-                **user,
-                "current_points": new_current_points,
-                "total_points_spent": new_total_spent
-            }
-            google_wallet_service.update_pass_for_user(updated_user_dict)
-        except Exception:
-            pass
 
-        return {
-            "message": f"¡Felicidades! Has canjeado '{product['producto']}' exitosamente.",
-            "product": product,
-            "remaining_points": new_current_points
-        }
-
-
-product_service = ProductService()
