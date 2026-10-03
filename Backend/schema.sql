@@ -57,3 +57,43 @@ VALUES
     ('44444444-4444-4444-4444-444444444444', 'Iced Latte Caramel', 65.00, 120, 5, '/products/latte.svg'),
     ('55555555-5555-5555-5555-555555555555', 'Muffin de Arándanos', 45.00, 80, 2, '/products/muffin.svg')
 ON CONFLICT (id_prod) DO NOTHING;
+
+-- 4. Tabla de Reglas de Puntos / Sellos
+CREATE TABLE IF NOT EXISTS points_rules (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    monto_dinero DECIMAL(10,2) NOT NULL,
+    puntos_otorgados INT NOT NULL,
+    descripcion TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 5. Tabla de Configuración Global de la Billetera
+CREATE TABLE IF NOT EXISTS wallet_settings (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    max_sellos INT NOT NULL DEFAULT 10,
+    is_active BOOLEAN DEFAULT TRUE,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 6. Tabla de Configuración de Sellos (Imágenes)
+CREATE TABLE IF NOT EXISTS stamp_levels (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    nivel_sello INT UNIQUE NOT NULL,
+    imagen_url TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Trigger para points_rules
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_points_rules_modtime
+BEFORE UPDATE ON points_rules
+FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();

@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, QrCode, Edit, Trash2, Award, RefreshCw, Users, ShieldAlert, Gift } from 'lucide-react';
+import { UserPlus, QrCode, Edit, Trash2, Award, RefreshCw, Users, ShieldAlert, Gift, Settings } from 'lucide-react';
 import { userService } from '../services/api';
 import { CustomerModal } from '../components/CustomerModal';
 import { CustomerForm } from '../components/CustomerForm';
 import { AdminRewardsView } from './admin/AdminRewardsView';
+import { AdminLoyaltyView } from './admin/AdminLoyaltyView';
 
 export const AdminView = () => {
   const [activeTab, setActiveTab] = useState(
-    window.location.pathname.includes('recompensas') ? 'recompensas' : 'clientes'
+    window.location.pathname.includes('recompensas')
+      ? 'recompensas'
+      : window.location.pathname.includes('reglas')
+      ? 'reglas'
+      : 'clientes'
   );
   const [users, setUsers] = useState([]);
   const [total, setTotal] = useState(0);
@@ -53,7 +58,7 @@ export const AdminView = () => {
   };
 
   return (
-    <div className="container" style={{ maxWidth: activeTab === 'recompensas' ? '1100px' : '750px', transition: 'max-width 0.3s ease' }}>
+    <div className="container" style={{ maxWidth: activeTab === 'clientes' ? '750px' : '1100px', transition: 'max-width 0.3s ease' }}>
       {/* Sub-navegación Pestañas Administrativas */}
       <div style={{
         display: 'flex',
@@ -89,7 +94,7 @@ export const AdminView = () => {
           }}
         >
           <Users size={18} />
-          <span>Directorio de Clientes</span>
+          <span>Directorio</span>
         </button>
 
         <button
@@ -116,12 +121,41 @@ export const AdminView = () => {
           }}
         >
           <Gift size={18} />
-          <span>Catálogo de Recompensas</span>
+          <span>Recompensas</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveTab('reglas');
+            window.history.pushState({}, '', '/admin/reglas');
+          }}
+          style={{
+            flex: 1,
+            padding: '10px 16px',
+            borderRadius: '10px',
+            border: 'none',
+            background: activeTab === 'reglas' ? '#E2A03F' : 'transparent',
+            color: activeTab === 'reglas' ? '#FFF' : '#734F2F',
+            fontWeight: '700',
+            fontSize: '0.88rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justify: 'center',
+            gap: '8px',
+            transition: 'all 0.2s ease',
+            boxShadow: activeTab === 'reglas' ? '0 4px 10px rgba(226, 160, 63, 0.25)' : 'none'
+          }}
+        >
+          <Settings size={18} />
+          <span>Reglas y Sellos</span>
         </button>
       </div>
 
       {activeTab === 'recompensas' ? (
         <AdminRewardsView />
+      ) : activeTab === 'reglas' ? (
+        <AdminLoyaltyView />
       ) : (
         <>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>

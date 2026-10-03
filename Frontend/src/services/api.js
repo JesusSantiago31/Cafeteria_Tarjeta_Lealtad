@@ -114,3 +114,60 @@ export const productService = {
   }
 };
 
+export const loyaltyService = {
+  // Get point rules
+  getRules: async () => {
+    const response = await apiClient.get('/loyalty/rules');
+    return response.data;
+  },
+
+  // Create point rule
+  createRule: async (ruleData) => {
+    const response = await apiClient.post('/loyalty/rules', ruleData);
+    return response.data;
+  },
+
+  // Update point rule
+  updateRule: async (ruleId, ruleData) => {
+    const response = await apiClient.put(`/loyalty/rules/${ruleId}`, ruleData);
+    return response.data;
+  },
+
+  // Delete point rule
+  deleteRule: async (ruleId) => {
+    const response = await apiClient.delete(`/loyalty/rules/${ruleId}`);
+    return response.data;
+  },
+
+  // Get wallet settings
+  getSettings: async () => {
+    const response = await apiClient.get('/loyalty/settings');
+    return response.data;
+  },
+
+  // Update wallet settings
+  updateSettings: async (settingsData) => {
+    const response = await apiClient.put('/loyalty/settings', settingsData);
+    return response.data;
+  },
+
+  // Get stamp levels / images
+  getStampLevels: async () => {
+    const response = await apiClient.get('/loyalty/stamp-levels');
+    return response.data;
+  },
+
+  // Save/Update stamp level image
+  saveStampLevel: async (stampData) => {
+    const response = await apiClient.post('/loyalty/stamp-levels', stampData);
+    return response.data;
+  },
+
+  // Delete stamp level
+  deleteStampLevel: async (stampCount) => {
+    const response = await apiClient.delete(`/loyalty/stamp-levels/${stampCount}`);
+    return response.data;
+  }
+};
+
+

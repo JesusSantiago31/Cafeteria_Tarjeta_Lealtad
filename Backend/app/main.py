@@ -6,6 +6,7 @@ from slowapi.errors import RateLimitExceeded
 from app.api.v1.products.endpoints import router as products_router
 from app.api.v1.users.endpoints import router as users_router
 from app.api.v1.wallet.endpoints import router as wallet_router
+from app.api.v1.loyalty.endpoints import router as loyalty_router
 from app.core.config import settings
 from app.core.rate_limiter import limiter
 
@@ -34,6 +35,7 @@ app.add_middleware(
 app.include_router(users_router, prefix=settings.API_V1_STR)
 app.include_router(wallet_router, prefix=settings.API_V1_STR)
 app.include_router(products_router, prefix=settings.API_V1_STR)
+app.include_router(loyalty_router, prefix=settings.API_V1_STR)
 
 
 @app.get("/", tags=["Health & Info"])
