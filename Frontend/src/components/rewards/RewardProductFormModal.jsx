@@ -42,50 +42,15 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      setError('Por favor selecciona un archivo de imagen válido (JPG, PNG, WebP).');
-      return;
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        setError('Por favor selecciona un archivo de imagen válido (JPG, PNG, WebP).');
+        return;
+      }
+      setSelectedFile(file);
+      setFilePreview(URL.createObjectURL(file));
+      setError('');
     }
-
-    setError('');
-    setSelectedFile(file);
-
-    // Compresión e imagen Base64 liviana para renderizado rápido y seguro sin errores 403/404
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_SIZE = 600;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_SIZE) {
-            height = Math.round((height * MAX_SIZE) / width);
-            width = MAX_SIZE;
-          }
-        } else {
-          if (height > MAX_SIZE) {
-            width = Math.round((width * MAX_SIZE) / height);
-            height = MAX_SIZE;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
-        setFilePreview(compressedDataUrl);
-        setFormData(prev => ({ ...prev, imagen_url: compressedDataUrl }));
-      };
-      img.src = event.target.result;
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e) => {
@@ -106,22 +71,19 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
     let finalImageUrl = formData.imagen_url;
 
     try {
-      // 1. Intentar subida a backend (Google Drive / Supabase) con respaldo seguro a Base64
+      // 1. Si hay un archivo seleccionado, subirlo primero a Google Drive
       if (selectedFile) {
         setUploading(true);
-        try {
-          const uploadRes = await productService.uploadProductImage(selectedFile);
-          if (uploadRes && uploadRes.imagen_url) {
-            finalImageUrl = uploadRes.imagen_url;
-          }
-        } catch (uploadErr) {
-          console.warn("Aviso de respaldo de imagen:", uploadErr);
-          // Mantiene la imagen base64 comprimida en finalImageUrl
+        const uploadRes = await productService.uploadProductImage(selectedFile);
+        if (uploadRes && uploadRes.imagen_url) {
+          finalImageUrl = uploadRes.imagen_url;
+        } else {
+          throw new Error("No se pudo obtener la URL de la imagen en Google Drive.");
         }
         setUploading(false);
       }
 
-      // 2. Guardar o actualizar producto
+      // 2. Guardar o actualizar producto con la URL de la imagen
       const payload = {
         producto: formData.producto.trim(),
         puntos_requeridos: parseInt(formData.puntos_requeridos),
@@ -339,11 +301,11 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
             />
           </div>
 
-          {/* Selector de Archivo de Imagen para Google Drive */}
+          {/* Selector de Archivo de Imagen */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: '600', color: '#4A331E', marginBottom: '6px' }}>
               <UploadCloud size={16} color="#788C5A" />
-              Subir Imagen de Producto (Google Drive)
+              Subir Imagen de Producto (ImgBB Cloud Storage)
             </label>
 
             <div style={{
@@ -380,11 +342,11 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
                   />
                   <div style={{ textAlign: 'left' }}>
                     <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#4A331E' }}>
-                      {selectedFile ? selectedFile.name : 'Imagen actual del producto'}
+                      {selectedFile ? selectedFile.name : 'Imagen del producto'}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#788C5A', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
                       <CheckCircle2 size={14} />
-                      <span>{selectedFile ? 'Lista para subir a Google Drive' : 'Guardada en Drive'}</span>
+                      <span>{selectedFile ? 'Subiendo a ImgBB Cloud' : 'Imagen asignada'}</span>
                     </div>
                     <span style={{ fontSize: '0.72rem', color: '#999', textDecoration: 'underline', marginTop: '2px', display: 'block' }}>
                       Haz clic para cambiar imagen
@@ -398,7 +360,7 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
                     Seleccionar imagen desde tu equipo
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '2px' }}>
-                    Se guardará automáticamente en la carpeta de Google Drive
+                    Se alojará automáticamente en la nube pública de ImgBB
                   </div>
                 </div>
               )}

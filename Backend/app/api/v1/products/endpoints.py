@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request, status, UploadFile, File, HTTPException
 from app.core.rate_limiter import limiter
 from app.models.product import ProductResponse, ProductCreate, ProductUpdate, RedemptionRequest
 from app.services.product_service import product_service
-from app.services.google_drive_service import google_drive_service
+from app.services.imgbb_service import imgbb_service
 
 router = APIRouter(prefix="/products", tags=["Products & Rewards"])
 
@@ -55,8 +55,8 @@ def delete_product(request: Request, product_id: str):
 
 @router.post(
     "/upload-image",
-    summary="Upload reward product image to Google Drive",
-    description="Upload an image file directly to the Google Drive shared folder and return the public image URL."
+    summary="Upload reward product image to ImgBB Cloud Storage",
+    description="Upload an image file directly to ImgBB Cloud Storage and return the public display URL."
 )
 @limiter.limit("30/minute")
 async def upload_product_image(request: Request, file: UploadFile = File(...)):
@@ -73,7 +73,7 @@ async def upload_product_image(request: Request, file: UploadFile = File(...)):
             detail="La imagen no debe superar los 10 MB."
         )
 
-    res = google_drive_service.upload_file(
+    res = imgbb_service.upload_file(
         file_content=contents,
         filename=file.filename or "reward_image.jpg",
         content_type=file.content_type or "image/jpeg"

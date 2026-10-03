@@ -46,12 +46,14 @@ class Settings(BaseSettings):
     # Rate Limiting
     DEFAULT_RATE_LIMIT: str = "100/minute"
 
+    # ImgBB Cloud Storage Configuration
+    IMGBB_API_KEY: str = ""
+
     # Google Wallet Configuration
     GOOGLE_ISSUER_ID: str = ""
     GOOGLE_CLASS_ID: str = ""
     GOOGLE_CLIENT_EMAIL: str = ""
     GOOGLE_PRIVATE_KEY: str = ""
-    GOOGLE_DRIVE_WEBAPP_URL: str = ""
     CAFETERIA_NAME: str = "Cafetería Gourmet"
     CAFETERIA_SUBHEADER: str = "Tarjeta VIP de Lealtad"
     CAFETERIA_BG_COLOR: str = "#69B07E"
