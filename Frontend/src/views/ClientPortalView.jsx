@@ -498,7 +498,7 @@ export function ClientPortalView() {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>
-                  🏷️ Tarjeta de Sellos
+                   Tarjeta de Sellos
                 </span>
                 <span className="badge badge-success" style={{ background: '#788C5A', color: '#FFF', fontWeight: 800, padding: '4px 10px', borderRadius: '12px' }}>
                   {currentStampsCount} / {registeredClient.max_stamps || 10} Sellos

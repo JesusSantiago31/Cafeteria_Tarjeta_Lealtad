@@ -30,6 +30,13 @@ class UserUpdate(BaseModel):
     total_points_earned: Optional[int] = None
     total_points_spent: Optional[int] = None
     total_purchases_count: Optional[int] = None
+    current_stamps: Optional[int] = None
+    max_stamps: Optional[int] = None
+    total_stamps_earned: Optional[int] = None
+    wallet_hero_image_url: Optional[str] = None
+    purchase_amount: Optional[float] = None
+
+    model_config = ConfigDict(extra="allow")
 
 
 class UserPointsUpdate(BaseModel):

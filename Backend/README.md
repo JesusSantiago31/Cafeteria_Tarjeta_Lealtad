@@ -1,4 +1,4 @@
-# ☕ Cafeteria Loyalty Cards API - Backend FastAPI
+# Cafeteria Loyalty Cards API - Backend FastAPI
 
 Backend modular en Python con FastAPI y Supabase para el Sistema de Tarjetas de Lealtad y Gestión de Puntos de Cafetería Física. Listo para desplegar en **Render.com**.
 
@@ -50,6 +50,7 @@ Existen **dos métodos** para desplegar esta API en Render:
 ## 💻 Ejecución Local en Desarrollo
 
 1. **Crear entorno virtual (opcional pero recomendado):**
+
    ```bash
    python -m venv venv
    # En Windows:
@@ -59,17 +60,20 @@ Existen **dos métodos** para desplegar esta API en Render:
    ```
 
 2. **Instalar dependencias:**
+
    ```bash
    pip install -r requirements.txt
    ```
 
 3. **Configurar `.env`:**
    Copia el archivo `.env.example` a `.env` y coloca tus credenciales de Supabase:
+
    ```bash
    cp .env.example .env
    ```
 
 4. **Ejecutar el servidor localmente:**
+
    ```bash
    uvicorn app.main:app --reload
    ```

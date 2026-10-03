@@ -229,20 +229,27 @@ class UserService:
 
     def update_user(self, user_id: str, user_update: UserUpdate) -> dict:
         """Update customer user profile information."""
-        # Ensure user exists
-        existing_user = self.get_user_by_id(user_id)
+        # Ensure user exists and resolve real UUID
+        try:
+            existing_user = self.get_user_by_id(user_id)
+        except Exception:
+            existing_user = self.get_user_by_loyalty_code(user_id)
+
+        real_user_id = str(existing_user["id"])
 
         update_data = user_update.model_dump(exclude_unset=True)
-        if not update_data:
+        purchase_amount = update_data.pop("purchase_amount", 0.00)
+
+        if not update_data and not purchase_amount:
             return existing_user
 
         # If updating email, check for conflicts
-        if "email" in update_data and update_data["email"] != existing_user["email"]:
+        if "email" in update_data and update_data.get("email") != existing_user.get("email"):
             conflict = (
                 self.db.table("users")
                 .select("id")
                 .eq("email", update_data["email"])
-                .neq("id", user_id)
+                .neq("id", real_user_id)
                 .execute()
             )
             if conflict.data:
@@ -259,10 +266,11 @@ class UserService:
             tx_type = "PURCHASE" if diff > 0 else "REDEMPTION"
             desc = f"Acumulación de {diff} puntos" if diff > 0 else f"Descuento de {-diff} puntos"
             self.add_transaction(
-                user_id=user_id,
+                user_id=real_user_id,
                 transaction_type=tx_type,
                 points_transacted=diff,
-                description=desc
+                description=desc,
+                purchase_amount=purchase_amount or 0.00
             )
 
         # Lookup and attach stamp image matching updated current_stamps
@@ -280,7 +288,7 @@ class UserService:
         res = (
             self.db.table("users")
             .update(update_data)
-            .eq("id", user_id)
+            .eq("id", real_user_id)
             .execute()
         )
         if not res.data:
@@ -326,12 +334,22 @@ class UserService:
     ):
         """Record a points transaction in DB and memory fallback."""
         import datetime
+        
+        target_uuid = str(user_id)
+        if len(target_uuid) < 30:
+            try:
+                u = self.get_user_by_loyalty_code(user_id)
+                if u and "id" in u:
+                    target_uuid = str(u["id"])
+            except Exception:
+                pass
+
         tx_payload = {
             "id": f"tx-mem-{random.randint(10000, 99999)}",
-            "user_id": user_id,
+            "user_id": target_uuid,
             "transaction_type": transaction_type,
-            "purchase_amount": purchase_amount,
-            "points_transacted": points_transacted,
+            "purchase_amount": float(purchase_amount or 0.00),
+            "points_transacted": int(points_transacted),
             "description": description,
             "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
@@ -341,15 +359,17 @@ class UserService:
 
         try:
             db_payload = {
-                "user_id": user_id,
+                "user_id": target_uuid,
                 "transaction_type": transaction_type,
-                "purchase_amount": purchase_amount,
-                "points_transacted": points_transacted,
+                "purchase_amount": float(purchase_amount or 0.00),
+                "points_transacted": int(points_transacted),
                 "description": description
             }
-            self.db.table("transactions").insert(db_payload).execute()
-        except Exception:
-            pass
+            res = self.db.table("transactions").insert(db_payload).execute()
+            print(f"[UserService] Transaction inserted into Supabase DB: {res.data}")
+            return res.data
+        except Exception as e:
+            print(f"[UserService] Warning inserting transaction into Supabase: {e}")
 
     def get_user_transactions(self, user_id: str) -> List[dict]:
         """Fetch transaction history for a single customer by UUID, phone, or loyalty code."""

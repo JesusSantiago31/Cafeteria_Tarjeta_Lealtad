@@ -284,14 +284,16 @@ export const PosView = () => {
       const nuevosTotalEarned = Math.max(0, (customer.total_points_earned || 0) + ptsToAdd);
       const nuevosSellos = Math.min(10, Math.max(0, (customer.current_stamps || 0) + sellosToAdd));
 
+      const purchaseAmountVal = modalidad === 'monto' ? (parseFloat(valorAcumular) || 0.00) : 0.00;
       const updated = await userService.updateUser(customer.id, {
         current_points: nuevosPuntosActuales,
         total_points_earned: nuevosTotalEarned,
         current_stamps: nuevosSellos,
+        purchase_amount: purchaseAmountVal,
       });
 
       setCustomer(updated);
-      alert(`¡Actualizado con éxito!\n\n☕ Puntos: +${ptsToAdd} (Nuevo saldo: ${updated.current_points} pts)\n🏷️ Sellos: +${sellosToAdd} (Total actual: ${nuevosSellos}/10 sellos)\n\nGoogle Wallet y la tarjeta Web del cliente se han actualizado automáticamente con su nueva imagen.`);
+      alert(`¡Actualizado con éxito!\n\n Puntos: +${ptsToAdd} (Nuevo saldo: ${updated.current_points} pts)\n Sellos: +${sellosToAdd} (Total actual: ${nuevosSellos}/10 sellos)\n\nGoogle Wallet y la tarjeta Web del cliente se han actualizado automáticamente con su nueva imagen.`);
       setValorAcumular('0.00');
     } catch (err) {
       alert("Error al actualizar cliente: " + err.message);
@@ -425,7 +427,7 @@ export const PosView = () => {
               <div>
                 <span style={{ fontSize: '10px', color: '#734F2F', opacity: 0.8, fontWeight: 700, display: 'block' }}>SELLOS</span>
                 <span className="badge badge-success" style={{ background: '#788C5A', color: '#FFF', fontWeight: 800 }}>
-                  🏷️ {customer.current_stamps || 0} / 10
+                   {customer.current_stamps || 0} / 10
                 </span>
               </div>
               <div>
@@ -473,7 +475,7 @@ export const PosView = () => {
 
           <div className="form-group" style={{ marginBottom: '16px' }}>
             <label id="lblInputMonto">
-              {modalidad === 'monto' ? '☕ 1. Monto consumido ($ MXN) ➔ Bonifica Puntos' : modalidad === 'visita' ? '☕ Puntos fijos por visita' : '☕ Cantidad de puntos directos'}
+              {modalidad === 'monto' ? ' 1. Monto consumido ($ MXN) ➔ Bonifica Puntos' : modalidad === 'visita' ? ' Puntos fijos por visita' : ' Cantidad de puntos directos'}
             </label>
             <input
               type="number"
@@ -499,7 +501,7 @@ export const PosView = () => {
           <div className="form-group" style={{ background: '#FAF7F2', padding: '14px', borderRadius: '14px', border: '1px solid #E8DFD1', marginBottom: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <label style={{ fontSize: '0.85rem', fontWeight: 800, color: '#734F2F', margin: 0 }}>
-                🏷️ 2. Sellos a Sumar (Totalmente Independiente de Puntos)
+                 2. Sellos a Sumar (Totalmente Independiente de Puntos)
               </label>
             </div>
 
@@ -554,10 +556,10 @@ export const PosView = () => {
             </div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', alignItems: 'center' }}>
               <span style={{ fontSize: '15px', fontWeight: 900, color: '#3B621D' }}>
-                ☕ +{puntosCalculados} Puntos
+                 +{puntosCalculados} Puntos
               </span>
               <span style={{ fontSize: '15px', fontWeight: 900, color: '#734F2F' }}>
-                🏷️ +{sellosSumar} Sello(s)
+                 +{sellosSumar} Sello(s)
               </span>
             </div>
           </div>

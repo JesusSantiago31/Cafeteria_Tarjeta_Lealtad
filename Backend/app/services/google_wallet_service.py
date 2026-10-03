@@ -130,7 +130,7 @@ class GoogleWalletService:
                 {
                     "id": "sellos_acumulados",
                     "header": "SELLOS ACUMULADOS",
-                    "body": f"{stamps} de {max_stamps} 🏷️"
+                    "body": f"{stamps} de {max_stamps} "
                 },
                 {
                     "id": "puntos_disponibles",
@@ -232,7 +232,7 @@ class GoogleWalletService:
                 {
                     "id": "sellos_acumulados",
                     "header": "SELLOS ACUMULADOS",
-                    "body": f"{stamps} de {max_stamps} 🏷️"
+                    "body": f"{stamps} de {max_stamps} "
                 },
                 {
                     "id": "puntos_disponibles",
