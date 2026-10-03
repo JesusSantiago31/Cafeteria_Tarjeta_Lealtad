@@ -91,6 +91,25 @@ class GoogleWalletService:
             }
 
 
+        # Dynamic hero image from DB (updated by SQL trigger based on current_stamps)
+        hero_url = user.get("wallet_hero_image_url") or settings.CAFETERIA_HERO_IMAGE_URL
+        hero_image_obj = None
+        if hero_url:
+            hero_image_obj = {
+                "sourceUri": {
+                    "uri": hero_url
+                },
+                "contentDescription": {
+                    "defaultValue": {
+                        "language": "es-419",
+                        "value": "Tarjeta de Lealtad - Sellos"
+                    }
+                }
+            }
+
+        stamps = user.get("current_stamps", 0)
+        max_stamps = user.get("max_stamps", 10)
+
         # Build Generic Object Instance
         generic_object: Dict[str, Any] = {
             "id": pass_id,
@@ -106,22 +125,22 @@ class GoogleWalletService:
                 }
             },
             "hexBackgroundColor": settings.CAFETERIA_BG_COLOR,
-            "heroImage": generic_class.get("heroImage"),
+            "heroImage": hero_image_obj,
             "textModulesData": [
+                {
+                    "id": "sellos_acumulados",
+                    "header": "SELLOS ACUMULADOS",
+                    "body": f"{stamps} de {max_stamps} 🏷️"
+                },
                 {
                     "id": "puntos_disponibles",
                     "header": "PUNTOS DISPONIBLES",
-                    "body": str(points)
+                    "body": f"{points} pts"
                 },
                 {
                     "id": "compras_realizadas",
                     "header": "COMPRAS REALIZADAS",
                     "body": str(purchases_count)
-                },
-                {
-                    "id": "puntos_historicos",
-                    "header": "PUNTOS HISTÓRICOS",
-                    "body": f"{total_earned} Pts"
                 },
                 {
                     "id": "codigo_cliente",
@@ -187,7 +206,7 @@ class GoogleWalletService:
 
     def update_pass_for_user(self, user: dict) -> dict:
         """
-        Send a remote Push Update (PATCH) to Google Wallet REST API to instantly sync customer points on their phone.
+        Send a remote Push Update (PATCH) to Google Wallet REST API to instantly sync customer points and stamps on their phone.
         """
         import re
         user_id = str(user.get("id", "guest"))
@@ -196,8 +215,11 @@ class GoogleWalletService:
 
         full_name = f"{user.get('first_name', 'Cliente')} {user.get('last_name', '')}".strip()
         points = user.get("current_points", 0)
+        stamps = user.get("current_stamps", 0)
+        max_stamps = user.get("max_stamps", 10)
         purchases_count = user.get("total_purchases_count", 0)
         total_earned = user.get("total_points_earned", 0)
+        hero_url = user.get("wallet_hero_image_url") or settings.CAFETERIA_HERO_IMAGE_URL
 
         if phone_clean:
             pass_id = f"{self.issuer_id}.gen_v6_{phone_clean}"
@@ -208,19 +230,19 @@ class GoogleWalletService:
             "hexBackgroundColor": settings.CAFETERIA_BG_COLOR,
             "textModulesData": [
                 {
+                    "id": "sellos_acumulados",
+                    "header": "SELLOS ACUMULADOS",
+                    "body": f"{stamps} de {max_stamps} 🏷️"
+                },
+                {
                     "id": "puntos_disponibles",
                     "header": "PUNTOS DISPONIBLES",
-                    "body": str(points)
+                    "body": f"{points} pts"
                 },
                 {
                     "id": "compras_realizadas",
                     "header": "COMPRAS REALIZADAS",
                     "body": str(purchases_count)
-                },
-                {
-                    "id": "puntos_historicos",
-                    "header": "PUNTOS HISTÓRICOS",
-                    "body": f"{total_earned} Pts"
                 },
                 {
                     "id": "codigo_cliente",
@@ -229,6 +251,19 @@ class GoogleWalletService:
                 }
             ]
         }
+
+        if hero_url:
+            updated_object["heroImage"] = {
+                "sourceUri": {
+                    "uri": hero_url
+                },
+                "contentDescription": {
+                    "defaultValue": {
+                        "language": "es-419",
+                        "value": "Tarjeta de Lealtad - Sellos"
+                    }
+                }
+            }
 
 
         # If Google Service Account Key is configured, execute real Google REST API call

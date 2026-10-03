@@ -123,6 +123,9 @@ export function ClientPortalView() {
           id: freshUser.id || prev.id,
           puntos: updatedPoints,
           current_points: updatedPoints,
+          current_stamps: freshUser.current_stamps !== undefined ? freshUser.current_stamps : (prev.current_stamps || 0),
+          max_stamps: freshUser.max_stamps || prev.max_stamps || 10,
+          wallet_hero_image_url: freshUser.wallet_hero_image_url || prev.wallet_hero_image_url,
           full_name: `${freshUser.first_name || ''} ${freshUser.last_name || ''}`.trim() || prev.full_name
         } : prev);
       }
@@ -462,6 +465,40 @@ export function ClientPortalView() {
                 Tel: {registeredClient.phone || registeredClient.phone_number}
               </div>
             </div>
+          </div>
+
+          {/* SECCIÓN VISUAL DE LA TARJETA DE SELLOS */}
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '20px',
+            padding: '16px',
+            textAlign: 'center',
+            border: '2px solid var(--primary)',
+            boxShadow: 'var(--shadow-md)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>
+                🏷️ Tarjeta de Sellos
+              </span>
+              <span className="badge badge-success" style={{ background: '#788C5A', color: '#FFF', fontWeight: 800, padding: '4px 10px', borderRadius: '12px' }}>
+                {registeredClient.current_stamps || 0} / {registeredClient.max_stamps || 10} Sellos
+              </span>
+            </div>
+
+            {/* Imagen Dinámica del Sello desde ImgBB */}
+            {registeredClient.wallet_hero_image_url ? (
+              <div style={{ borderRadius: '14px', overflow: 'hidden', border: '1px solid #E8DFD1', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+                <img 
+                  src={registeredClient.wallet_hero_image_url} 
+                  alt={`Tarjeta con ${registeredClient.current_stamps || 0} sellos`} 
+                  style={{ width: '100%', maxHeight: '220px', objectFit: 'contain', display: 'block', background: '#FAF7F2' }} 
+                />
+              </div>
+            ) : (
+              <div style={{ padding: '20px', background: '#FAF7F2', borderRadius: '14px', color: '#734F2F', fontSize: '0.85rem' }}>
+                Cargando imagen de la tarjeta de sellos...
+              </div>
+            )}
           </div>
 
           {/* TARJETA DE PUNTOS Y RECOMPENSAS */}

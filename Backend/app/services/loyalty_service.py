@@ -9,6 +9,8 @@ from app.models.loyalty import (
     StampLevelCreate, StampLevelUpdate
 )
 
+from app.services.user_service import handle_supabase_error
+
 class LoyaltyService:
     def __init__(self, db: Optional[Client] = None):
         self._db = db
@@ -21,8 +23,11 @@ class LoyaltyService:
 
     # --- Points Rules ---
     def get_points_rules(self) -> List[dict]:
-        res = self.db.table("points_rules").select("*").execute()
-        return res.data if res.data else []
+        try:
+            res = self.db.table("points_rules").select("*").execute()
+            return res.data if res.data else []
+        except Exception as e:
+            return []
 
     def create_points_rule(self, rule_data: PointsRuleCreate) -> dict:
         data = rule_data.model_dump(exclude_unset=True)
@@ -31,7 +36,7 @@ class LoyaltyService:
             if res.data:
                 return res.data[0]
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            handle_supabase_error(e)
         raise HTTPException(status_code=500, detail="Failed to create rule")
 
     def update_points_rule(self, rule_id: str, rule_data: PointsRuleUpdate) -> dict:
