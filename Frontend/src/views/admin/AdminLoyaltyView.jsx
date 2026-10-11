@@ -171,7 +171,7 @@ export const AdminLoyaltyView = () => {
     setBroadcasting(true);
     try {
       await loyaltyService.broadcastNotification({
-        header: `☕ Oferta de Hoy (${rule.dia_nombre})`,
+        header: `Oferta de Hoy (${rule.dia_nombre})`,
         body: rule.descripcion || `Por cada $${rule.monto_dinero} de compra recibe ${rule.puntos_otorgados} puntos de regalo.`
       });
       setMsg(`¡Oferta del ${rule.dia_nombre} enviada a Google Wallet!`);
@@ -507,7 +507,7 @@ export const AdminLoyaltyView = () => {
               </label>
               <input 
                 type="text"
-                placeholder="Ej. ¡2x1 en Cappuccinos hoy! ☕"
+                placeholder="Ej. ¡2x1 en Cappuccinos hoy!"
                 value={notifHeader}
                 onChange={(e) => setNotifHeader(e.target.value)}
                 maxLength={90}
@@ -531,7 +531,7 @@ export const AdminLoyaltyView = () => {
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px' }}>
             <span style={{ fontSize: '0.78rem', color: '#777' }}>
-              📍 También se notifica automáticamente a los clientes al estar cerca del local (Geofencing activo).
+              También se notifica automáticamente a los clientes al estar cerca del local (Geofencing activo).
             </span>
             <button 
               type="submit" 

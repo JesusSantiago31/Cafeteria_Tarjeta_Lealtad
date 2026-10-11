@@ -43,7 +43,7 @@ def update_wallet_settings(settings_data: WalletSettingUpdate):
 @router.post("/wallet/broadcast")
 def broadcast_wallet_notification(body: dict):
     from app.services.google_wallet_service import google_wallet_service
-    header = body.get("header") or "¡Oferta Especial de Lealtad! ☕"
+    header = body.get("header") or "¡Oferta Especial!"
     msg_body = body.get("body") or "Aprovecha nuestras promociones exclusivas en la cafetería."
     return google_wallet_service.broadcast_push_notification(header, msg_body)
 

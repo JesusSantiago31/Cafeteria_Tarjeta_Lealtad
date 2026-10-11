@@ -230,7 +230,7 @@ export const AdminRewardsView = () => {
               boxShadow: filterType === 'venta' ? '0 2px 6px rgba(0,0,0,0.08)' : 'none'
             }}
           >
-            <span>☕ Menú de Venta ({ventaCount})</span>
+            <span>Menú de Venta ({ventaCount})</span>
           </button>
 
           <button
@@ -251,7 +251,7 @@ export const AdminRewardsView = () => {
               boxShadow: filterType === 'recompensa' ? '0 2px 6px rgba(0,0,0,0.08)' : 'none'
             }}
           >
-            <span>🎁 Recompensas Puntos ({recompensaCount})</span>
+            <span>Recompensas Puntos ({recompensaCount})</span>
           </button>
         </div>
 
@@ -415,7 +415,7 @@ export const AdminRewardsView = () => {
                       alignItems: 'center',
                       gap: '4px'
                     }}>
-                      <span>{isVenta ? '☕ Menú Venta' : '🎁 Recompensa Pts'}</span>
+                      <span>{isVenta ? ' Menú Venta' : 'Recompensa Pts'}</span>
                     </div>
 
                     {/* Badge Puntos o Precio */}

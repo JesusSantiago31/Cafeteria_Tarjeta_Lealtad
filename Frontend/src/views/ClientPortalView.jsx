@@ -514,7 +514,11 @@ export function ClientPortalView() {
                     {registeredClient.full_name}
                   </h2>
                 </div>
-                <Coffee size={28} color="var(--primary)" />
+                <img
+                  src="https://i.ibb.co/Jw5npW95/LOGO.jpg"
+                  alt="Logo"
+                  style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--secondary)', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
+                />
               </div>
 
               {/* CÓDIGO QR VISIBLE DESTACADO */}
@@ -579,11 +583,11 @@ export function ClientPortalView() {
             {/* Caducidad de Puntos */}
             {walletSettings.dias_caducidad_puntos > 0 ? (
               <div style={{ fontSize: '0.78rem', color: '#E8DFD1', marginBottom: '10px', fontWeight: 600 }}>
-                ⏰ Vigencia de puntos: {walletSettings.dias_caducidad_puntos} días
+                 Vigencia de puntos: {walletSettings.dias_caducidad_puntos} días
               </div>
             ) : (
               <div style={{ fontSize: '0.78rem', color: '#E8DFD1', marginBottom: '10px', fontWeight: 600 }}>
-                ✨ Tus puntos no tienen fecha de caducidad
+                 Tus puntos no tienen fecha de caducidad
               </div>
             )}
 
@@ -630,7 +634,7 @@ export function ClientPortalView() {
                 }}
               >
                 <Coffee size={20} color="#734F2F" />
-                <span>☕ Ver Menú de la Cafetería</span>
+                <span> Ver Menú de la Cafetería</span>
               </button>
 
               {/* BOTÓN RECLAMAR RECOMPENSAS */}
@@ -780,7 +784,11 @@ export function ClientPortalView() {
           <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '460px', maxHeight: '85vh', overflowY: 'auto' }}>
             <div style={{ background: '#734F2F', color: 'white', padding: '16px 20px', borderRadius: '18px 18px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Coffee size={24} color="#CFD989" />
+                <img
+                  src="https://i.ibb.co/Jw5npW95/LOGO.jpg"
+                  alt="Logo"
+                  style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #CFD989', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}
+                />
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'white' }}>Menú de la Cafetería</h3>
                   <div style={{ fontSize: '0.78rem', color: '#E8DFD1' }}>

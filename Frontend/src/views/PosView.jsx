@@ -578,7 +578,7 @@ export const PosView = () => {
             }}>
               <Sparkles size={18} color="#2e7d32" />
               <span>
-                💡 Promo de Hoy ({todayRule.dia_nombre}): Por cada ${todayRule.monto_dinero} obtén {todayRule.puntos_otorgados} pts.
+                Promo de Hoy ({todayRule.dia_nombre}): Por cada ${todayRule.monto_dinero} obtén {todayRule.puntos_otorgados} pts.
               </span>
             </div>
           ) : (
@@ -624,7 +624,7 @@ export const PosView = () => {
               id="tabVisita"
               onClick={() => seleccionarModalidad('visita')}
             >
-              📍 Por Visita
+              Por Visita
             </div>
           </div>
 

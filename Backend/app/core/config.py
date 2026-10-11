@@ -59,8 +59,9 @@ class Settings(BaseSettings):
     CAFETERIA_BG_COLOR: str = "#a58d61"
     CAFETERIA_LOGO_URL: str = "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400&q=80"
     CAFETERIA_HERO_IMAGE_URL: str = "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1000&q=80"
-    CAFETERIA_LATITUDE: float = 19.432608
-    CAFETERIA_LONGITUDE: float = -99.133209
+    CAFETERIA_LATITUDE: float = 19.9520188
+    CAFETERIA_LONGITUDE: float = -99.5343952
+
 
 
 

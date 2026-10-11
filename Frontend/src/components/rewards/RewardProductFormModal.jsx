@@ -232,7 +232,7 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
                 }}
               >
                 <Gift size={18} />
-                <span>🎁 Recompensa (Puntos)</span>
+                <span>Recompensa (Puntos)</span>
               </button>
 
               <button
@@ -254,7 +254,7 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
                 }}
               >
                 <DollarSign size={18} />
-                <span>☕ Venta (Menú)</span>
+                <span> Venta (Menú)</span>
               </button>
             </div>
             <small style={{ color: '#777', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
