@@ -213,9 +213,10 @@ class GoogleWalletService:
         claims = {
             "iss": self.client_email,
             "aud": "google",
-            "origins": ["*"],
+            "origins": settings.FRONTEND_ORIGIN,
             "typ": "savetowallet",
             "iat": now,
+            "exp": now + 3600,
             "payload": {
                 "genericClasses": [
                     {

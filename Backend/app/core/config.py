@@ -43,8 +43,19 @@ class Settings(BaseSettings):
             return v
         return []
 
-    # Rate Limiting
-    DEFAULT_RATE_LIMIT: str = "100/minute"
+    # Frontend origin(s) for Google Wallet JWT
+    FRONTEND_ORIGIN: Union[List[str], str] = "*"
+
+    @field_validator("FRONTEND_ORIGIN", mode="before")
+    @classmethod
+    def assemble_frontend_origin(cls, v: Union[str, List[str]]) -> List[str]:
+        if isinstance(v, str):
+            if v.strip() == "*":
+                return ["*"]
+            return [i.strip() for i in v.split(",") if i.strip()]
+        elif isinstance(v, list):
+            return v
+        return []
 
     # ImgBB Cloud Storage Configuration
     IMGBB_API_KEY: str = ""
