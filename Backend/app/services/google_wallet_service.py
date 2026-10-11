@@ -292,7 +292,8 @@ class GoogleWalletService:
                 {
                     "id": f"msg_update_{user_id}_{int(time.time())}",
                     "header": "¡Notificación de Lealtad!",
-                    "body": f"¡Felicidades {user.get('first_name', '')}! Acabas de recibir nuevos puntos o sellos. Saldo actual: {stamps}/10 sellos y {points} pts."
+                    "body": f"¡Felicidades {user.get('first_name', '')}! Acabas de recibir nuevos puntos o sellos. Saldo actual: {stamps}/10 sellos y {points} pts.",
+                    "messageType": "TEXT_AND_NOTIFY"
                 }
             ],
             "textModulesData": [
@@ -502,13 +503,14 @@ class GoogleWalletService:
     def broadcast_push_notification(self, header: str, body: str) -> dict:
         """
         Broadcast a push notification / special offer to all Google Wallet cards
-        by updating the genericClass messages and triggering customer notifications.
+        by calling addMessage with messageType TEXT_AND_NOTIFY to trigger a real Android push notification.
         """
         msg_id = f"offer_{int(time.time())}"
         msg_obj = {
             "id": msg_id,
             "header": header,
-            "body": body
+            "body": body,
+            "messageType": "TEXT_AND_NOTIFY"
         }
         
         raw_class_id = (settings.GOOGLE_CLASS_ID or "cafeteria_generic_v6").strip().strip('"').strip("'")
@@ -538,8 +540,23 @@ class GoogleWalletService:
                 )
                 if token_res.status_code == 200:
                     access_token = token_res.json().get("access_token")
+
+                    # 1. Official Google Wallet Push Notification endpoint: addMessage
+                    add_msg_url = f"https://walletobjects.googleapis.com/walletobjects/v1/genericClass/{class_id}/addMessage"
+                    add_res = requests.post(
+                        add_msg_url,
+                        headers={
+                            "Authorization": f"Bearer {access_token}",
+                            "Content-Type": "application/json"
+                        },
+                        json={"message": msg_obj},
+                        timeout=5
+                    )
+                    print(f"[GoogleWalletService] Broadcast addMessage push response: HTTP {add_res.status_code}")
+
+                    # 2. Also patch class messages so it displays persistently inside the card
                     patch_url = f"https://walletobjects.googleapis.com/walletobjects/v1/genericClass/{class_id}"
-                    patch_res = requests.patch(
+                    requests.patch(
                         patch_url,
                         headers={
                             "Authorization": f"Bearer {access_token}",
@@ -548,13 +565,13 @@ class GoogleWalletService:
                         json={"messages": [msg_obj]},
                         timeout=5
                     )
-                    print(f"[GoogleWalletService] Broadcast response: HTTP {patch_res.status_code}")
+
                     return {
                         "status": "success",
-                        "synced": True,
+                        "synced": add_res.status_code in (200, 201),
                         "header": header,
                         "body": body,
-                        "http_code": patch_res.status_code
+                        "http_code": add_res.status_code
                     }
             except Exception as e:
                 print(f"[GoogleWalletService] Broadcast error: {e}")

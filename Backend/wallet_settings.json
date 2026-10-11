@@ -1,0 +1,9 @@
+{
+  "max_sellos": 10,
+  "dias_caducidad_puntos": 90,
+  "recompensa_sellos_descripcion": "Bebida de cortesía a elegir",
+  "instagram_url": "https://instagram.com/cafeteria",
+  "facebook_url": "https://facebook.com/cafeteria",
+  "terminos_url": "https://cafeteria.com/terminos",
+  "is_active": true
+}

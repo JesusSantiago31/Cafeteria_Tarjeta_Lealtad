@@ -1,3 +1,5 @@
+import os
+import json
 from typing import List, Optional
 from fastapi import HTTPException, status
 from supabase import Client
@@ -154,6 +156,8 @@ class LoyaltyService:
         return {"message": "Regla eliminada exitosamente"}
 
     # --- Wallet Settings ---
+    _SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "wallet_settings.json")
+
     def get_wallet_settings(self) -> dict:
         default_settings = {
             "max_sellos": 10,
@@ -164,6 +168,7 @@ class LoyaltyService:
             "terminos_url": "https://cafeteria.com/terminos",
             "is_active": True
         }
+        # 1. Try Supabase
         try:
             res = self.db.table("wallet_settings").select("*").limit(1).execute()
             if res.data and len(res.data) > 0:
@@ -171,34 +176,48 @@ class LoyaltyService:
                 return merged
         except Exception:
             pass
+
+        # 2. Try persistent file fallback
+        try:
+            if os.path.exists(self._SETTINGS_FILE):
+                with open(self._SETTINGS_FILE, "r", encoding="utf-8") as f:
+                    file_data = json.load(f)
+                    if isinstance(file_data, dict):
+                        return {**default_settings, **file_data}
+        except Exception as e:
+            print(f"[LoyaltyService] Error reading settings file: {e}")
+
         return default_settings
 
     def update_wallet_settings(self, settings_data: WalletSettingUpdate) -> dict:
         data = settings_data.model_dump(exclude_unset=True)
+        current = self.get_wallet_settings()
+        merged = {**current, **data}
+
+        # 1. Always save to local persistent file so changes never revert on page refresh
+        try:
+            os.makedirs(os.path.dirname(os.path.abspath(self._SETTINGS_FILE)), exist_ok=True)
+            with open(self._SETTINGS_FILE, "w", encoding="utf-8") as f:
+                json.dump(merged, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"[LoyaltyService] Error writing settings file: {e}")
+
+        # 2. Also attempt to save to Supabase
         try:
             res_check = self.db.table("wallet_settings").select("id").limit(1).execute()
             if res_check.data and len(res_check.data) > 0:
                 id_to_update = res_check.data[0]["id"]
                 res = self.db.table("wallet_settings").update(data).eq("id", id_to_update).execute()
-                if res.data:
-                    return res.data[0]
+                if res.data and len(res.data) > 0:
+                    return {**merged, **res.data[0]}
             else:
                 res = self.db.table("wallet_settings").insert(data).execute()
-                if res.data:
-                    return res.data[0]
+                if res.data and len(res.data) > 0:
+                    return {**merged, **res.data[0]}
         except Exception as e:
-            print(f"[LoyaltyService] Error updating wallet_settings: {e}")
+            print(f"[LoyaltyService] Note: Supabase wallet_settings sync warning (saved locally): {e}")
 
-        # In-memory fallback
-        return {
-            "max_sellos": data.get("max_sellos", 10),
-            "dias_caducidad_puntos": data.get("dias_caducidad_puntos", 90),
-            "recompensa_sellos_descripcion": data.get("recompensa_sellos_descripcion", "Bebida de cortesía a elegir"),
-            "instagram_url": data.get("instagram_url", "https://instagram.com/cafeteria"),
-            "facebook_url": data.get("facebook_url", "https://facebook.com/cafeteria"),
-            "terminos_url": data.get("terminos_url", "https://cafeteria.com/terminos"),
-            "is_active": data.get("is_active", True)
-        }
+        return merged
 
 
     # --- Stamp Images ---

@@ -69,3 +69,7 @@ BEGIN
     END IF;
 END $$;
 
+-- 6. Deshabilitar RLS o permitir acceso anónimo a wallet_settings para que guarde en Supabase
+ALTER TABLE public.wallet_settings DISABLE ROW LEVEL SECURITY;
+
+
