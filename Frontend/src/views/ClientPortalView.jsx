@@ -121,25 +121,38 @@ export function ClientPortalView() {
   const handleSaveToWallet = async () => {
     if (!registeredClient) return;
     setLoadingWallet(true);
+
+    // Abrir ventana ANTES del await para evitar bloqueo de popup en móvil
+    const walletWindow = window.open('', '_blank', 'noopener,noreferrer');
+
     try {
       const uId = registeredClient.id || registeredClient.phone || registeredClient.phone_number;
       if (!uId) {
+        if (walletWindow) walletWindow.close();
         alert("No se pudo identificar al cliente para generar el pase.");
         return;
       }
       const data = await userService.getGoogleWalletPass(uId);
       if (data && data.save_url) {
-        window.open(data.save_url, '_blank', 'noopener,noreferrer');
+        if (walletWindow && !walletWindow.closed) {
+          walletWindow.location.href = data.save_url;
+        } else {
+          // Fallback: redirigir en la misma pestaña si la ventana fue bloqueada
+          window.location.href = data.save_url;
+        }
       } else {
+        if (walletWindow) walletWindow.close();
         alert("No se pudo obtener el enlace del pase de Google Wallet.");
       }
     } catch (err) {
+      if (walletWindow) walletWindow.close();
       console.error("Error al obtener pase de Google Wallet:", err);
       alert("Error al conectar con Google Wallet. Por favor reintenta.");
     } finally {
       setLoadingWallet(false);
     }
   };
+
 
   // Ticket QR de Canje State
   const [redemptionTicket, setRedemptionTicket] = useState(null);
