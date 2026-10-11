@@ -596,8 +596,8 @@ export const PosView = () => {
             {modalidad === 'monto' && (
               <div style={{ fontSize: '11px', color: '#734F2F', marginTop: '6px', background: '#FAFDF7', padding: '8px 12px', borderRadius: '10px', border: '1px solid #CFD989', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>
-                  <strong>Regla BD:</strong> {activeRules.length > 0
-                    ? `Por cada $${parseFloat(activeRules[0].monto_dinero).toFixed(2)} MXN ➔ +${activeRules[0].puntos_otorgados} ${activeRules[0].puntos_otorgados === 1 ? 'punto' : 'puntos'}`
+                  <strong>Regla BD ({todayRule?.dia_nombre || 'Hoy'}):</strong> {(todayRule || activeRules[0])
+                    ? `Por cada $${parseFloat((todayRule || activeRules[0]).monto_dinero).toFixed(2)} MXN ➔ +${(todayRule || activeRules[0]).puntos_otorgados} ${(todayRule || activeRules[0]).puntos_otorgados === 1 ? 'punto' : 'puntos'}`
                     : 'Por cada $10.00 MXN ➔ +1 punto'}
                 </span>
                 <span style={{ fontWeight: 800, color: '#788C5A' }}>

@@ -37,17 +37,27 @@ export function ClientPortalView() {
   const matchedStampObj = stampImagesMap.find(s => s.stamp_count === currentStampsCount || s.nivel_sello === currentStampsCount);
   const displayStampImg = registeredClient?.wallet_hero_image_url || (matchedStampObj ? (matchedStampObj.image_url || matchedStampObj.wallet_hero_url || matchedStampObj.imagen_url) : null);
 
+  const [todayRule, setTodayRule] = useState(null);
+
   // Cargar mapeo global de imágenes de sellos y configuración de billetera
   useEffect(() => {
     const fetchStampImagesMap = async () => {
       try {
-        const [imgs, settings] = await Promise.all([
+        const [imgs, settings, rules] = await Promise.all([
           loyaltyService.getStampLevels(),
-          loyaltyService.getSettings()
+          loyaltyService.getSettings(),
+          loyaltyService.getRules()
         ]);
         setStampImagesMap(imgs || []);
         if (settings) {
           setWalletSettings(prev => ({ ...prev, ...settings }));
+        }
+        if (rules && rules.length > 0) {
+          const act = rules.filter(r => r.is_active !== false);
+          const jsDay = new Date().getDay();
+          const todayNum = jsDay === 0 ? 7 : jsDay;
+          const foundToday = act.find(r => r.dia_semana === todayNum) || act[0];
+          setTodayRule(foundToday);
         }
       } catch (err) {
         console.error("Error cargando configuración:", err);
@@ -568,12 +578,36 @@ export function ClientPortalView() {
 
             {/* Caducidad de Puntos */}
             {walletSettings.dias_caducidad_puntos > 0 ? (
-              <div style={{ fontSize: '0.78rem', color: '#E8DFD1', marginBottom: '14px', fontWeight: 600 }}>
+              <div style={{ fontSize: '0.78rem', color: '#E8DFD1', marginBottom: '10px', fontWeight: 600 }}>
                 ⏰ Vigencia de puntos: {walletSettings.dias_caducidad_puntos} días
               </div>
             ) : (
-              <div style={{ fontSize: '0.78rem', color: '#E8DFD1', marginBottom: '14px', fontWeight: 600 }}>
+              <div style={{ fontSize: '0.78rem', color: '#E8DFD1', marginBottom: '10px', fontWeight: 600 }}>
                 ✨ Tus puntos no tienen fecha de caducidad
+              </div>
+            )}
+
+            {/* Banner de Promoción Dinámica del Día configurada por el Administrador */}
+            {todayRule && (
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.18)',
+                backdropFilter: 'blur(4px)',
+                border: '1px solid rgba(255, 255, 255, 0.35)',
+                borderRadius: '12px',
+                padding: '8px 12px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                color: '#FFFDF9',
+                marginBottom: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
+              }}>
+                <Sparkles size={16} color="#FFE082" />
+                <span>
+                  Hoy ({todayRule.dia_nombre}): ¡Por cada ${todayRule.monto_dinero} obtén {todayRule.puntos_otorgados} pts!
+                </span>
               </div>
             )}
 
