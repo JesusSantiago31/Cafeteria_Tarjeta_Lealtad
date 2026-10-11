@@ -17,6 +17,8 @@ class UserCreate(UserBase):
         max_length=50,
         description="Unique loyalty/QR code. If omitted, will be auto-generated."
     )
+    tenant_id: Optional[Any] = Field(None, description="Optional tenant ID")
+
 
 
 class UserUpdate(BaseModel):

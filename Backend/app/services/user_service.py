@@ -19,14 +19,15 @@ from postgrest.exceptions import APIError
 
 def handle_supabase_error(e: Exception):
     """Format Supabase API errors into clear HTTP exceptions."""
-    if isinstance(e, APIError) or "Invalid API key" in str(e):
+    err_str = str(e)
+    if "Invalid API key" in err_str or "JWT" in err_str or "apikey" in err_str.lower():
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Clave API de Supabase inválida. Por favor actualiza SUPABASE_KEY en Backend/.env con tu clave 'anon' o 'service_role' de Supabase."
         )
     raise HTTPException(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail=f"Error en la base de datos Supabase: {str(e)}"
+        detail=f"Error en la base de datos Supabase: {err_str}"
     )
 
 
@@ -107,7 +108,56 @@ class UserService:
             "is_active": True,
         }
 
-        res = self.db.table("users").insert(payload).execute()
+        # Resolver tenant_id defensivamente si la columna existe con NOT NULL en la base de datos
+        tenant_id = getattr(user_in, "tenant_id", None)
+        if not tenant_id:
+            try:
+                tenants_res = self.db.table("tenants").select("id").limit(1).execute()
+                if tenants_res.data and len(tenants_res.data) > 0:
+                    tenant_id = tenants_res.data[0].get("id")
+            except Exception:
+                pass
+
+        if not tenant_id:
+            try:
+                user_tenant_res = (
+                    self.db.table("users")
+                    .select("tenant_id")
+                    .not_.is_("tenant_id", "null")
+                    .limit(1)
+                    .execute()
+                )
+                if user_tenant_res.data and len(user_tenant_res.data) > 0:
+                    tenant_id = user_tenant_res.data[0].get("tenant_id")
+            except Exception:
+                pass
+
+        if tenant_id:
+            payload["tenant_id"] = str(tenant_id)
+
+        try:
+            res = self.db.table("users").insert(payload).execute()
+        except APIError as api_err:
+            err_msg = str(api_err)
+            if "tenant_id" in err_msg and "violates not-null constraint" in err_msg:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        "La columna 'tenant_id' en la tabla 'users' de Supabase tiene restricción NOT NULL. "
+                        "Por favor ejecuta en el Editor SQL de Supabase: "
+                        "ALTER TABLE public.users ALTER COLUMN tenant_id DROP NOT NULL;"
+                    )
+                )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error en la base de datos Supabase: {err_msg}"
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error inesperado al registrar usuario: {str(e)}"
+            )
+
         if not res.data:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
