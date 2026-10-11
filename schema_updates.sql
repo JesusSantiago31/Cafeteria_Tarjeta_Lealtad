@@ -45,8 +45,7 @@ INSERT INTO public.points_rules (monto_dinero, puntos_otorgados, descripcion, di
 SELECT 300.0, 35, 'Domingo Familiar: 35 pts por cada $300', 7, 'Domingo', true
 WHERE NOT EXISTS (SELECT 1 FROM public.points_rules WHERE dia_semana = 7);
 
--- 5. Eliminar restricción NOT NULL de tenant_id en la tabla users
--- Esto permite que los clientes se registren sin error en caso de que la columna tenant_id exista
+-- 5. Eliminar restricción NOT NULL de tenant_id en users y points_rules
 DO $$ 
 BEGIN
     IF EXISTS (
@@ -58,4 +57,15 @@ BEGIN
     ) THEN
         ALTER TABLE public.users ALTER COLUMN tenant_id DROP NOT NULL;
     END IF;
+
+    IF EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+          AND table_name = 'points_rules' 
+          AND column_name = 'tenant_id'
+    ) THEN
+        ALTER TABLE public.points_rules ALTER COLUMN tenant_id DROP NOT NULL;
+    END IF;
 END $$;
+

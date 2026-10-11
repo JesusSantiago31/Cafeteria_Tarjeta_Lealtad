@@ -161,7 +161,7 @@ class GoogleWalletService:
             "messages": [
                 {
                     "id": f"msg_welcome_{int(time.time())}",
-                    "header": "¡Bienvenido a Cafetería Gourmet! ☕",
+                    "header": "¡Bienvenido a Cafetería Gourmet! ",
                     "body": f"¡Hola {user.get('first_name', 'Cliente')}! Tienes {stamps} de {max_stamps} sellos y {points} pts en tu tarjeta VIP."
                 }
             ],
@@ -291,7 +291,7 @@ class GoogleWalletService:
             "messages": [
                 {
                     "id": f"msg_update_{user_id}_{int(time.time())}",
-                    "header": "¡Notificación de Lealtad! ☕🏷️",
+                    "header": "¡Notificación de Lealtad!",
                     "body": f"¡Felicidades {user.get('first_name', '')}! Acabas de recibir nuevos puntos o sellos. Saldo actual: {stamps}/10 sellos y {points} pts."
                 }
             ],

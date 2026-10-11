@@ -15,7 +15,18 @@ const DIAS_SEMANA_DEFAULT = [
   { dia_semana: 7, dia_nombre: "Domingo", monto_dinero: 300.0, puntos_otorgados: 35, descripcion: "Domingo Familiar: Bonificación de 35 pts por cada $300", is_active: true },
 ];
 
+const DEFAULT_BASE_RULE = {
+  id: null,
+  dia_semana: null,
+  dia_nombre: "Por Defecto",
+  monto_dinero: 10.0,
+  puntos_otorgados: 1,
+  descripcion: "Regla Base Estándar: 1 punto por cada $10.00 MXN",
+  is_active: true
+};
+
 export const AdminLoyaltyView = () => {
+  const [defaultRule, setDefaultRule] = useState(DEFAULT_BASE_RULE);
   const [weeklyRules, setWeeklyRules] = useState(DIAS_SEMANA_DEFAULT);
   const [stampImages, setStampImages] = useState([]);
   const [walletSettings, setWalletSettings] = useState({
@@ -52,14 +63,22 @@ export const AdminLoyaltyView = () => {
         loyaltyService.getSettings()
       ]);
 
-      // Mapear los 7 días de la semana
+      // Mapear regla por defecto y los 7 días de la semana
       if (rulesData && rulesData.length > 0) {
+        const foundDefault = rulesData.find(r => r.dia_semana === null || r.dia_semana === undefined);
+        if (foundDefault) {
+          setDefaultRule({ ...DEFAULT_BASE_RULE, ...foundDefault });
+        } else {
+          setDefaultRule(DEFAULT_BASE_RULE);
+        }
+
         const mergedWeekly = DIAS_SEMANA_DEFAULT.map(def => {
           const found = rulesData.find(r => r.dia_semana === def.dia_semana);
           return found ? { ...def, ...found } : def;
         });
         setWeeklyRules(mergedWeekly);
       } else {
+        setDefaultRule(DEFAULT_BASE_RULE);
         setWeeklyRules(DIAS_SEMANA_DEFAULT);
       }
 
@@ -78,6 +97,10 @@ export const AdminLoyaltyView = () => {
     fetchData();
   }, []);
 
+  const handleDefaultRuleChange = (field, value) => {
+    setDefaultRule(prev => ({ ...prev, [field]: value }));
+  };
+
   const handleWeeklyRuleChange = (index, field, value) => {
     setWeeklyRules(prev => {
       const next = [...prev];
@@ -90,12 +113,13 @@ export const AdminLoyaltyView = () => {
     if (e) e.preventDefault();
     setSavingRules(true);
     try {
-      await loyaltyService.saveWeeklyRules(weeklyRules);
-      setMsg("¡Reglas dinámicas de los 7 días de la semana guardadas exitosamente!");
+      const allToSave = [defaultRule, ...weeklyRules];
+      await loyaltyService.saveWeeklyRules(allToSave);
+      setMsg("¡Reglas dinámicas y regla por defecto guardadas exitosamente!");
       setTimeout(() => setMsg(null), 3500);
       fetchData();
     } catch (err) {
-      alert("Error al guardar reglas semanales: " + (err.response?.data?.detail || err.message));
+      alert("Error al guardar reglas: " + (err.response?.data?.detail || err.message));
     } finally {
       setSavingRules(false);
     }
@@ -211,25 +235,95 @@ export const AdminLoyaltyView = () => {
         </div>
       )}
 
-      {/* SECCIÓN 1: Reglas de Bonificación de Puntos Dinámicas por Día de la Semana */}
+      {/* SECCIÓN 1: Reglas de Bonificación de Puntos Dinámicas */}
       <div className="card-client" style={{ margin: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Calendar size={22} color="#734F2F" />
-            <h3 style={{ margin: 0, color: '#734F2F' }}>Reglas Dinámicas de Puntos por Día de la Semana</h3>
+            <h3 style={{ margin: 0, color: '#734F2F' }}>Reglas Dinámicas y Base de Puntos</h3>
           </div>
           <button 
             type="button" 
             className="btn btn-primary" 
             onClick={handleSaveWeeklyRules}
             disabled={savingRules}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px', fontWeight: 800 }}
           >
             {savingRules ? <RefreshCw size={16} className="spin" /> : <Sparkles size={16} />}
-            <span>{savingRules ? 'Guardando...' : 'Guardar Todos los Días'}</span>
+            <span>{savingRules ? 'Guardando...' : 'Guardar Todas las Reglas'}</span>
           </button>
         </div>
 
+        {/* CAMPO REGLA BASE POR DEFECTO */}
+        <div style={{
+          background: '#FBFDF9',
+          border: '1.5px solid #C0DD97',
+          borderRadius: '14px',
+          padding: '16px 20px',
+          marginBottom: '20px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <Award size={20} color="#2e7d32" />
+            <h4 style={{ margin: 0, color: '#2e7d32', fontSize: '1rem', fontWeight: 800 }}>
+              ⭐ Regla Base por Defecto (Estándar)
+            </h4>
+          </div>
+          <p style={{ fontSize: '0.84rem', color: '#666', margin: '0 0 14px 0' }}>
+            Se aplica automáticamente cuando un día de la semana <strong>no tiene promoción activa</strong> o para compras generales.
+          </p>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <label style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#444' }}>Por cada:</label>
+              <span style={{ color: '#777', fontWeight: 700 }}>$</span>
+              <input 
+                type="number"
+                step="0.01"
+                value={defaultRule.monto_dinero}
+                onChange={(e) => handleDefaultRuleChange('monto_dinero', parseFloat(e.target.value) || 0)}
+                style={{ width: '100px', padding: '7px 10px', borderRadius: '8px', border: '1px solid #C0DD97' }}
+              />
+              <span style={{ fontSize: '0.82rem', color: '#666' }}>MXN</span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <label style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#444' }}>Otorga:</label>
+              <input 
+                type="number"
+                value={defaultRule.puntos_otorgados}
+                onChange={(e) => handleDefaultRuleChange('puntos_otorgados', parseInt(e.target.value, 10) || 0)}
+                style={{ width: '80px', padding: '7px 10px', borderRadius: '8px', border: '1px solid #C0DD97' }}
+              />
+              <span style={{ fontSize: '0.85rem', color: '#2e7d32', fontWeight: 800 }}>pts</span>
+            </div>
+
+            <div style={{ flex: 1, minWidth: '220px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <label style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#444' }}>Descripción:</label>
+              <input 
+                type="text"
+                value={defaultRule.descripcion || ''}
+                onChange={(e) => handleDefaultRuleChange('descripcion', e.target.value)}
+                placeholder="Regla Base Estándar"
+                style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: '1px solid #C0DD97' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#444' }}>Activo:</label>
+              <input 
+                type="checkbox"
+                checked={defaultRule.is_active !== false}
+                onChange={(e) => handleDefaultRuleChange('is_active', e.target.checked)}
+                style={{ cursor: 'pointer', transform: 'scale(1.3)' }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <h4 style={{ margin: '0 0 8px 0', color: '#734F2F', fontSize: '0.98rem' }}>
+          📅 Reglas Dinámicas de Puntos por Día de la Semana
+        </h4>
         <p style={{ fontSize: '0.88rem', color: '#666', marginTop: 0 }}>
           Define cuántos puntos gana el cliente según el día que compre. Por ejemplo: <em>Lunes al comprar $500 se bonifican 50 puntos; Martes al comprar $300 se bonifican 40 puntos</em>, etc.
         </p>

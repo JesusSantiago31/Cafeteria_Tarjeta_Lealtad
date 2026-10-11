@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     GOOGLE_PRIVATE_KEY: str = ""
     CAFETERIA_NAME: str = "Cafetería Gourmet"
     CAFETERIA_SUBHEADER: str = "Tarjeta VIP de Lealtad"
-    CAFETERIA_BG_COLOR: str = "#69B07E"
+    CAFETERIA_BG_COLOR: str = "#a58d61"
     CAFETERIA_LOGO_URL: str = "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400&q=80"
     CAFETERIA_HERO_IMAGE_URL: str = "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1000&q=80"
     CAFETERIA_LATITUDE: float = 19.432608

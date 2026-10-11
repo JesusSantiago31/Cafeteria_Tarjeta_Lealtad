@@ -26,7 +26,9 @@ export const PosView = () => {
   const [sellosSumar, setSellosSumar] = useState(1);
   const [procesandoPuntos, setProcesandoPuntos] = useState(false);
   const [activeRules, setActiveRules] = useState([]);
+  const [defaultRule, setDefaultRule] = useState(null);
   const [todayRule, setTodayRule] = useState(null);
+  const [selectedRuleKey, setSelectedRuleKey] = useState('auto');
   const [walletSettings, setWalletSettings] = useState(null);
   const [canjeandoSellos, setCanjeandoSellos] = useState(false);
 
@@ -49,11 +51,20 @@ export const PosView = () => {
           const act = rules.filter(r => r.is_active !== false);
           setActiveRules(act);
 
-          // Detectar la regla del día actual (1=Lunes ... 7=Domingo)
+          // 1. Regla base por defecto (dia_semana es null o undefined)
+          const defRule = rules.find(r => (r.dia_semana === null || r.dia_semana === undefined) && r.is_active !== false) || {
+            monto_dinero: 10.0,
+            puntos_otorgados: 1,
+            dia_nombre: 'Por Defecto',
+            descripcion: 'Regla Base Estándar'
+          };
+          setDefaultRule(defRule);
+
+          // 2. Detectar la regla del día actual (1=Lunes ... 7=Domingo)
           const jsDay = new Date().getDay();
           const todayNum = jsDay === 0 ? 7 : jsDay;
-          const foundToday = act.find(r => r.dia_semana === todayNum) || act[0];
-          setTodayRule(foundToday);
+          const foundToday = rules.find(r => r.dia_semana === todayNum && r.is_active !== false);
+          setTodayRule(foundToday || null);
         }
 
         if (settings) {
@@ -66,24 +77,39 @@ export const PosView = () => {
     fetchRulesAndSettings();
   }, []);
 
-  // Calcular Puntos dinámicamente según la regla del día de la semana
+  // Regla efectiva según la opción elegida por el cajero
+  const activePromoRule = (() => {
+    if (selectedRuleKey === 'default') return defaultRule;
+    if (selectedRuleKey !== 'auto') {
+      const found = activeRules.find(r => r.id === selectedRuleKey);
+      if (found) return found;
+    }
+    return todayRule || defaultRule;
+  })();
+
+  // Calcular Puntos dinámicamente según la regla seleccionada y el monto
   useEffect(() => {
     const val = parseFloat(valorAcumular) || 0;
     if (modalidad === 'monto') {
-      const rule = todayRule || activeRules[0];
+      const rule = activePromoRule;
       if (rule && rule.monto_dinero > 0) {
-        const pts = Math.floor(val / rule.monto_dinero) * rule.puntos_otorgados;
-        setPuntosCalculados(pts);
+        // Si el cajero está en 'auto' y el monto no alcanza la promo del día pero hay regla base, aplicar regla base
+        if (selectedRuleKey === 'auto' && todayRule && val < todayRule.monto_dinero && defaultRule && defaultRule.monto_dinero > 0) {
+          const pts = Math.floor(val / defaultRule.monto_dinero) * defaultRule.puntos_otorgados;
+          setPuntosCalculados(pts);
+        } else {
+          const pts = Math.floor(val / rule.monto_dinero) * rule.puntos_otorgados;
+          setPuntosCalculados(pts);
+        }
       } else {
-        // Regla por defecto ($10 = 1 punto) si no hay reglas
         setPuntosCalculados(Math.floor(val / 10));
       }
     } else if (modalidad === 'directo') {
-      setPuntosCalculados(parseInt(val) || 0);
+      setPuntosCalculados(parseInt(val, 10) || 0);
     } else if (modalidad === 'visita') {
-      setPuntosCalculados(parseInt(val) || 0);
+      setPuntosCalculados(parseInt(val, 10) || 0);
     }
-  }, [modalidad, valorAcumular, todayRule, activeRules]);
+  }, [modalidad, valorAcumular, activePromoRule, selectedRuleKey, todayRule, defaultRule]);
 
 
   // Manejador del escáner con cámara en vivo
@@ -535,8 +561,8 @@ export const PosView = () => {
 
           <hr style={{ border: 0, borderTop: '1.5px solid #CFD989', margin: '15px 0' }} />
 
-          {/* BANNER PROMOCIÓN DEL DÍA DINÁMICA */}
-          {todayRule && (
+          {/* BANNER PROMOCIÓN DEL DÍA DINÁMICA / REGLA BASE */}
+          {todayRule ? (
             <div style={{
               background: '#EAF3DE',
               color: '#2e7d32',
@@ -553,6 +579,25 @@ export const PosView = () => {
               <Sparkles size={18} color="#2e7d32" />
               <span>
                 💡 Promo de Hoy ({todayRule.dia_nombre}): Por cada ${todayRule.monto_dinero} obtén {todayRule.puntos_otorgados} pts.
+              </span>
+            </div>
+          ) : (
+            <div style={{
+              background: '#F0F4E8',
+              color: '#4B6327',
+              border: '1px solid #D5E2BC',
+              borderRadius: '12px',
+              padding: '10px 14px',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              marginBottom: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <Sparkles size={18} color="#4B6327" />
+              <span>
+                ℹ️ Hoy: Sin promoción especial activa. Aplicando Regla Base Estándar (${defaultRule?.monto_dinero || 10} ➔ +{defaultRule?.puntos_otorgados || 1} pt).
               </span>
             </div>
           )}
@@ -593,17 +638,59 @@ export const PosView = () => {
               value={valorAcumular}
               onChange={(e) => setValorAcumular(e.target.value)}
             />
+
             {modalidad === 'monto' && (
-              <div style={{ fontSize: '11px', color: '#734F2F', marginTop: '6px', background: '#FAFDF7', padding: '8px 12px', borderRadius: '10px', border: '1px solid #CFD989', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>
-                  <strong>Regla BD ({todayRule?.dia_nombre || 'Hoy'}):</strong> {(todayRule || activeRules[0])
-                    ? `Por cada $${parseFloat((todayRule || activeRules[0]).monto_dinero).toFixed(2)} MXN ➔ +${(todayRule || activeRules[0]).puntos_otorgados} ${(todayRule || activeRules[0]).puntos_otorgados === 1 ? 'punto' : 'puntos'}`
-                    : 'Por cada $10.00 MXN ➔ +1 punto'}
-                </span>
-                <span style={{ fontWeight: 800, color: '#788C5A' }}>
-                  Total: +{puntosCalculados} pts
-                </span>
-              </div>
+              <>
+                {/* SELECTOR DE REGLA EN CAJA POS */}
+                <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#664D03', margin: 0, whiteSpace: 'nowrap' }}>
+                    Regla a Aplicar:
+                  </label>
+                  <select
+                    value={selectedRuleKey}
+                    onChange={(e) => setSelectedRuleKey(e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: '5px 8px',
+                      borderRadius: '8px',
+                      border: '1px solid #CFD989',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      color: '#495057',
+                      background: '#FFF'
+                    }}
+                  >
+                    <option value="auto">
+                      ⭐ Automático ({todayRule ? `${todayRule.dia_nombre}: $${todayRule.monto_dinero} ➔ ${todayRule.puntos_otorgados} pts` : `Regla Base: $${defaultRule?.monto_dinero || 10} ➔ ${defaultRule?.puntos_otorgados || 1} pts`})
+                    </option>
+                    {defaultRule && (
+                      <option value="default">
+                        📌 Regla Base Estándar ($${defaultRule.monto_dinero} ➔ +${defaultRule.puntos_otorgados} pts)
+                      </option>
+                    )}
+                    {activeRules.filter(r => r.dia_semana).map(r => (
+                      <option key={r.id} value={r.id}>
+                        📅 {r.dia_nombre}: ${r.monto_dinero} ➔ +${r.puntos_otorgados} pts {r.id === todayRule?.id ? '(Hoy)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ fontSize: '11px', color: '#734F2F', marginTop: '6px', background: '#FAFDF7', padding: '8px 12px', borderRadius: '10px', border: '1px solid #CFD989', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>
+                    <strong>Regla Activa:</strong> {
+                      (selectedRuleKey === 'auto' && todayRule && parseFloat(valorAcumular) < todayRule.monto_dinero && defaultRule)
+                        ? `Base (Compra < $${todayRule.monto_dinero}): $${defaultRule.monto_dinero} ➔ +${defaultRule.puntos_otorgados} pts`
+                        : activePromoRule
+                          ? `${activePromoRule.dia_nombre || 'Regla'}: Por cada $${parseFloat(activePromoRule.monto_dinero).toFixed(2)} MXN ➔ +${activePromoRule.puntos_otorgados} pts`
+                          : '$10.00 MXN ➔ +1 punto'
+                    }
+                  </span>
+                  <span style={{ fontWeight: 800, color: '#788C5A', fontSize: '0.9rem' }}>
+                    Total: +{puntosCalculados} pts
+                  </span>
+                </div>
+              </>
             )}
           </div>
 

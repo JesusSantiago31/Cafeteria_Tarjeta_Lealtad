@@ -32,16 +32,28 @@ class LoyaltyService:
         {"id": "rule-7", "dia_semana": 7, "dia_nombre": "Domingo", "monto_dinero": 300.0, "puntos_otorgados": 35, "descripcion": "Domingo Familiar: Bonificación de 35 pts por cada $300", "is_active": True},
     ]
 
+    def _get_tenant_id(self) -> Optional[str]:
+        """Defensively resolve tenant_id if required by database constraints."""
+        try:
+            tenants_res = self.db.table("tenants").select("id").limit(1).execute()
+            if tenants_res.data and len(tenants_res.data) > 0:
+                return str(tenants_res.data[0].get("id"))
+        except Exception:
+            pass
+        return None
+
     def get_points_rules(self) -> List[dict]:
         try:
-            res = self.db.table("points_rules").select("*").order("dia_semana").execute()
+            res = self.db.table("points_rules").select("*").execute()
             if res.data and len(res.data) > 0:
-                # Si las reglas en BD ya tienen dia_semana
-                has_weekly = any(r.get("dia_semana") is not None for r in res.data)
-                if has_weekly:
-                    return res.data
-                else:
-                    return res.data
+                # Ordenar: primero los días 1..7 si tienen dia_semana, y al final la regla por defecto
+                rules = list(res.data)
+                # Sort placing dia_semana (1..7) first, and None at the end or top
+                def sort_key(r):
+                    d = r.get("dia_semana")
+                    return (1, d) if d is not None else (0, 0)
+                rules.sort(key=sort_key)
+                return rules
         except Exception as e:
             print(f"[LoyaltyService] Error reading points_rules: {e}")
 
@@ -49,6 +61,9 @@ class LoyaltyService:
 
     def create_points_rule(self, rule_data: PointsRuleCreate) -> dict:
         data = rule_data.model_dump(exclude_unset=True)
+        tenant_id = self._get_tenant_id()
+        if tenant_id and "tenant_id" not in data:
+            data["tenant_id"] = tenant_id
         try:
             res = self.db.table("points_rules").insert(data).execute()
             if res.data:
@@ -59,6 +74,9 @@ class LoyaltyService:
 
     def update_points_rule(self, rule_id: str, rule_data: PointsRuleUpdate) -> dict:
         data = rule_data.model_dump(exclude_unset=True)
+        tenant_id = self._get_tenant_id()
+        if tenant_id and "tenant_id" not in data:
+            data["tenant_id"] = tenant_id
         try:
             res = self.db.table("points_rules").update(data).eq("id", rule_id).execute()
             if res.data:
@@ -75,42 +93,58 @@ class LoyaltyService:
         raise HTTPException(status_code=404, detail="Rule not found")
 
     def save_weekly_rules(self, rules: List[dict]) -> List[dict]:
-        """Bulk update/upsert rules for all 7 days of the week."""
+        """Bulk update/upsert rules for all 7 days of the week plus default base rule."""
+        tenant_id = self._get_tenant_id()
         saved_rules = []
+
         for r in rules:
             r_data = dict(r)
+            clean_data = {}
+            for k in ["dia_semana", "dia_nombre", "monto_dinero", "puntos_otorgados", "descripcion", "is_active"]:
+                if k in r_data:
+                    clean_data[k] = r_data[k]
+
+            if tenant_id and "tenant_id" not in clean_data:
+                clean_data["tenant_id"] = tenant_id
+
             r_id = r_data.get("id")
             try:
+                # 1. Update by UUID if provided and valid
                 if r_id and not str(r_id).startswith("rule-"):
-                    upd = self.db.table("points_rules").update(r_data).eq("id", r_id).execute()
-                    if upd.data:
+                    upd = self.db.table("points_rules").update(clean_data).eq("id", r_id).execute()
+                    if upd.data and len(upd.data) > 0:
                         saved_rules.append(upd.data[0])
                         continue
-                
-                # Check by dia_semana
-                dia = r_data.get("dia_semana")
-                if dia:
+
+                # 2. Check by dia_semana
+                dia = clean_data.get("dia_semana")
+                if dia is not None and dia > 0:
                     chk = self.db.table("points_rules").select("id").eq("dia_semana", dia).execute()
-                    if chk.data:
+                    if chk.data and len(chk.data) > 0:
                         existing_id = chk.data[0]["id"]
-                        upd = self.db.table("points_rules").update(r_data).eq("id", existing_id).execute()
-                        if upd.data:
+                        upd = self.db.table("points_rules").update(clean_data).eq("id", existing_id).execute()
+                        if upd.data and len(upd.data) > 0:
                             saved_rules.append(upd.data[0])
                             continue
-                
-                # Insert
-                ins = self.db.table("points_rules").insert(r_data).execute()
-                if ins.data:
+                else:
+                    # Regla por defecto (dia_semana is null)
+                    chk = self.db.table("points_rules").select("id").is_("dia_semana", "null").execute()
+                    if chk.data and len(chk.data) > 0:
+                        existing_id = chk.data[0]["id"]
+                        upd = self.db.table("points_rules").update(clean_data).eq("id", existing_id).execute()
+                        if upd.data and len(upd.data) > 0:
+                            saved_rules.append(upd.data[0])
+                            continue
+
+                # 3. Otherwise Insert
+                ins = self.db.table("points_rules").insert(clean_data).execute()
+                if ins.data and len(ins.data) > 0:
                     saved_rules.append(ins.data[0])
             except Exception as e:
-                # Update in-memory fallback
-                for def_r in self.DEFAULT_WEEKLY_RULES:
-                    if def_r.get("dia_semana") == r_data.get("dia_semana"):
-                        def_r.update(r_data)
-                        saved_rules.append(def_r)
-                        break
+                print(f"[LoyaltyService] Error saving points rule: {e}")
 
-        return saved_rules if saved_rules else self.DEFAULT_WEEKLY_RULES
+        # Return refreshed list from database
+        return self.get_points_rules()
 
     def delete_points_rule(self, rule_id: str) -> dict:
         try:
