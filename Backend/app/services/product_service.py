@@ -10,14 +10,16 @@ from app.services.user_service import handle_supabase_error, user_service
 from app.models.product import ProductCreate, ProductUpdate
 
 # Catalog items in case database table is not yet seeded
+# Catalog items in case database table is not yet seeded
 DEFAULT_PRODUCTS = [
     {
         "id_prod": "11111111-1111-1111-1111-111111111111",
         "producto": "Café Cappuccino",
         "precio": 55.00,
         "puntos_requeridos": 100,
-        "piezas_disponibles": 4,
+        "piezas_disponibles": 20,
         "imagen_url": "/products/cappuccino.png",
+        "tipo": "venta",
         "created_at": "2026-09-13T10:00:00Z"
     },
     {
@@ -25,8 +27,9 @@ DEFAULT_PRODUCTS = [
         "producto": "Bagel de Jamón y Queso",
         "precio": 75.00,
         "puntos_requeridos": 150,
-        "piezas_disponibles": 3,
+        "piezas_disponibles": 15,
         "imagen_url": "/products/bagel.svg",
+        "tipo": "venta",
         "created_at": "2026-09-13T10:00:00Z"
     },
     {
@@ -36,6 +39,7 @@ DEFAULT_PRODUCTS = [
         "puntos_requeridos": 60,
         "piezas_disponibles": 12,
         "imagen_url": "/products/donut.svg",
+        "tipo": "recompensa",
         "created_at": "2026-09-13T10:00:00Z"
     },
     {
@@ -43,8 +47,9 @@ DEFAULT_PRODUCTS = [
         "producto": "Iced Latte Caramel",
         "precio": 65.00,
         "puntos_requeridos": 120,
-        "piezas_disponibles": 5,
+        "piezas_disponibles": 18,
         "imagen_url": "/products/latte.svg",
+        "tipo": "venta",
         "created_at": "2026-09-13T10:00:00Z"
     },
     {
@@ -52,8 +57,19 @@ DEFAULT_PRODUCTS = [
         "producto": "Muffin de Arándanos",
         "precio": 45.00,
         "puntos_requeridos": 80,
-        "piezas_disponibles": 2,
+        "piezas_disponibles": 8,
         "imagen_url": "/products/muffin.svg",
+        "tipo": "recompensa",
+        "created_at": "2026-09-13T10:00:00Z"
+    },
+    {
+        "id_prod": "66666666-6666-6666-6666-666666666666",
+        "producto": "Café Americano Especial",
+        "precio": 40.00,
+        "puntos_requeridos": 70,
+        "piezas_disponibles": 30,
+        "imagen_url": "/products/cappuccino.png",
+        "tipo": "venta",
         "created_at": "2026-09-13T10:00:00Z"
     }
 ]
@@ -69,16 +85,27 @@ class ProductService:
             self._db = get_supabase_client()
         return self._db
 
-    def get_products(self) -> List[dict]:
-        """Fetch all available reward products."""
+    def get_products(self, tipo: Optional[str] = None) -> List[dict]:
+        """Fetch all available products, optionally filtered by tipo ('venta' o 'recompensa')."""
         try:
-            res = self.db.table("products").select("*").order("puntos_requeridos", desc=False).execute()
+            query = self.db.table("products").select("*").order("puntos_requeridos", desc=False)
+            if tipo:
+                query = query.eq("tipo", tipo)
+            res = query.execute()
             if res.data and len(res.data) > 0:
+                # Ensure each product has tipo
+                for p in res.data:
+                    if not p.get("tipo"):
+                        p["tipo"] = "recompensa" if p.get("puntos_requeridos", 0) > 0 else "venta"
                 return res.data
         except Exception:
             # Fallback to default catalog if table is not yet created in Supabase
             pass
+
+        if tipo:
+            return [p for p in DEFAULT_PRODUCTS if p.get("tipo", "recompensa") == tipo]
         return DEFAULT_PRODUCTS
+
 
     def create_product(self, product_data: ProductCreate) -> dict:
         """Create a new reward product in Supabase database."""
@@ -99,6 +126,7 @@ class ProductService:
                 "puntos_requeridos": int(data.get("puntos_requeridos", 0)),
                 "piezas_disponibles": int(data.get("piezas_disponibles", 0)),
                 "imagen_url": data.get("imagen_url", "/products/cappuccino.png"),
+                "tipo": data.get("tipo", "recompensa"),
                 "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
             }
             DEFAULT_PRODUCTS.append(new_prod)
@@ -141,8 +169,10 @@ class ProductService:
             "precio": update_dict.get("precio", 0.0),
             "puntos_requeridos": update_dict.get("puntos_requeridos", 0),
             "piezas_disponibles": update_dict.get("piezas_disponibles", 0),
-            "imagen_url": update_dict.get("imagen_url")
+            "imagen_url": update_dict.get("imagen_url"),
+            "tipo": update_dict.get("tipo", "recompensa")
         }
+
 
     def delete_product(self, product_id: str) -> dict:
         """Delete a product by ID."""

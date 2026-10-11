@@ -64,35 +64,43 @@ export const userService = {
   getUserTransactions: async (userId) => {
     const response = await apiClient.get(`/users/${userId}/transactions`);
     return response.data;
+  },
+
+  // Redeem full 10-stamp card
+  redeemStamps: async (userId) => {
+    const response = await apiClient.post(`/users/${userId}/redeem-stamps`);
+    return response.data;
   }
 };
 
 export const productService = {
-  // Get list of reward products
-  getProducts: async () => {
-    const response = await apiClient.get('/products/');
+  // Get list of products (optionally filtered by tipo: 'venta' o 'recompensa')
+  getProducts: async (tipo = null) => {
+    const response = await apiClient.get('/products/', {
+      params: tipo ? { tipo } : {}
+    });
     return response.data;
   },
 
-  // Create reward product
+  // Create product
   createProduct: async (productData) => {
     const response = await apiClient.post('/products/', productData);
     return response.data;
   },
 
-  // Update reward product
+  // Update product
   updateProduct: async (productId, productData) => {
     const response = await apiClient.put(`/products/${productId}`, productData);
     return response.data;
   },
 
-  // Delete reward product
+  // Delete product
   deleteProduct: async (productId) => {
     const response = await apiClient.delete(`/products/${productId}`);
     return response.data;
   },
 
-  // Upload product image file to Google Drive
+  // Upload product image file
   uploadProductImage: async (file) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -118,6 +126,12 @@ export const loyaltyService = {
   // Get point rules
   getRules: async () => {
     const response = await apiClient.get('/loyalty/rules');
+    return response.data;
+  },
+
+  // Bulk save weekly rules (Lunes a Domingo)
+  saveWeeklyRules: async (rules) => {
+    const response = await apiClient.post('/loyalty/rules/weekly', rules);
     return response.data;
   },
 
@@ -151,6 +165,12 @@ export const loyaltyService = {
     return response.data;
   },
 
+  // Broadcast push notification to Google Wallet passes
+  broadcastNotification: async (notificationData) => {
+    const response = await apiClient.post('/loyalty/wallet/broadcast', notificationData);
+    return response.data;
+  },
+
   // Get stamp levels / images
   getStampLevels: async () => {
     const response = await apiClient.get('/loyalty/stamp-levels');
@@ -169,5 +189,6 @@ export const loyaltyService = {
     return response.data;
   }
 };
+
 
 

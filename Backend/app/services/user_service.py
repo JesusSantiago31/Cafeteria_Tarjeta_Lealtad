@@ -329,7 +329,70 @@ class UserService:
         return updated_user
 
 
+    def redeem_user_stamps(self, user_id: str) -> dict:
+        """
+        Redeem a completed 10-stamp card.
+        Resets current_stamps to 0, registers transaction, and updates Google Wallet.
+        """
+        user = self.get_user_by_id(user_id)
+        current_stamps = user.get("current_stamps", 0)
+        max_stamps = user.get("max_stamps", 10)
+
+        if current_stamps < max_stamps:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"El cliente tiene {current_stamps} sellos. Necesita {max_stamps} sellos para canjear."
+            )
+
+        # Look up configured static reward from wallet_settings
+        recompensa_desc = "Bebida de cortesía a elegir"
+        try:
+            from app.services.loyalty_service import loyalty_service
+            w_settings = loyalty_service.get_wallet_settings()
+            recompensa_desc = w_settings.get("recompensa_sellos_descripcion") or recompensa_desc
+        except Exception:
+            pass
+
+        # Reset stamps to 0
+        update_payload = {"current_stamps": 0}
+        
+        # Reset hero image to stamp 0 if available
+        try:
+            res_img = self.db.table("stamp_images").select("*").or_("stamp_count.eq.0,nivel_sello.eq.0").limit(1).execute()
+            if res_img.data:
+                img_url = res_img.data[0].get("wallet_hero_url") or res_img.data[0].get("image_url") or res_img.data[0].get("imagen_url")
+                if img_url:
+                    update_payload["wallet_hero_image_url"] = img_url
+        except Exception:
+            pass
+
+        res = self.db.table("users").update(update_payload).eq("id", user["id"]).execute()
+        updated_user = self._enrich_user_stamp_image(res.data[0] if res.data else {**user, "current_stamps": 0})
+
+        # Record transaction
+        self.add_transaction(
+            user_id=user["id"],
+            transaction_type="STAMP_REDEMPTION",
+            points_transacted=0,
+            description=f"Canje de Tarjeta Completa de 10 Sellos: {recompensa_desc}"
+        )
+
+        # Push notification to Google Wallet
+        try:
+            from app.services.google_wallet_service import google_wallet_service
+            google_wallet_service.update_pass_for_user(updated_user)
+        except Exception as e:
+            print(f"[UserService] Stamp redemption wallet push error: {e}")
+
+        return {
+            "success": True,
+            "message": f"¡Recompensa de sellos canjeada con éxito! Se entregó: {recompensa_desc}",
+            "recompensa": recompensa_desc,
+            "user": updated_user
+        }
+
     def delete_user(self, user_id: str, soft_delete: bool = True) -> bool:
+
         """Deactivate or remove customer user."""
         self.get_user_by_id(user_id)  # Ensure exists
 

@@ -10,6 +10,7 @@ class ProductBase(BaseModel):
     puntos_requeridos: int = Field(..., ge=0, description="Puntos necesarios para canjear")
     piezas_disponibles: int = Field(..., ge=0, description="Stock de piezas disponibles")
     imagen_url: Optional[str] = Field(None, description="URL o ruta de la imagen del producto")
+    tipo: Optional[str] = Field("recompensa", description="'venta' para menú o 'recompensa' para catálogo de canje")
 
 
 class ProductCreate(ProductBase):
@@ -22,6 +23,7 @@ class ProductUpdate(BaseModel):
     puntos_requeridos: Optional[int] = Field(None, ge=0)
     piezas_disponibles: Optional[int] = Field(None, ge=0)
     imagen_url: Optional[str] = None
+    tipo: Optional[str] = Field(None, description="'venta' o 'recompensa'")
 
 
 class ProductResponse(ProductBase):
@@ -34,3 +36,4 @@ class ProductResponse(ProductBase):
 class RedemptionRequest(BaseModel):
     user_id: UUID
     product_id: UUID
+

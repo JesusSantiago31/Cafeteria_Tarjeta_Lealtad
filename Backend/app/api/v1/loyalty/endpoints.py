@@ -19,6 +19,10 @@ def get_points_rules():
 def create_points_rule(rule_data: PointsRuleCreate):
     return loyalty_service.create_points_rule(rule_data)
 
+@router.post("/rules/weekly", response_model=List[PointsRuleResponse])
+def save_weekly_rules(rules: List[dict]):
+    return loyalty_service.save_weekly_rules(rules)
+
 @router.put("/rules/{rule_id}", response_model=PointsRuleResponse)
 def update_points_rule(rule_id: str, rule_data: PointsRuleUpdate):
     return loyalty_service.update_points_rule(rule_id, rule_data)
@@ -35,6 +39,14 @@ def get_wallet_settings():
 @router.put("/settings", response_model=WalletSettingResponse)
 def update_wallet_settings(settings_data: WalletSettingUpdate):
     return loyalty_service.update_wallet_settings(settings_data)
+
+@router.post("/wallet/broadcast")
+def broadcast_wallet_notification(body: dict):
+    from app.services.google_wallet_service import google_wallet_service
+    header = body.get("header") or "¡Oferta Especial de Lealtad! ☕"
+    msg_body = body.get("body") or "Aprovecha nuestras promociones exclusivas en la cafetería."
+    return google_wallet_service.broadcast_push_notification(header, msg_body)
+
 
 # --- Stamp Levels ---
 @router.get("/stamp-levels", response_model=List[StampLevelResponse])

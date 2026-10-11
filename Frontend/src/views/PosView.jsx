@@ -26,6 +26,9 @@ export const PosView = () => {
   const [sellosSumar, setSellosSumar] = useState(1);
   const [procesandoPuntos, setProcesandoPuntos] = useState(false);
   const [activeRules, setActiveRules] = useState([]);
+  const [todayRule, setTodayRule] = useState(null);
+  const [walletSettings, setWalletSettings] = useState(null);
+  const [canjeandoSellos, setCanjeandoSellos] = useState(false);
 
   // Catálogo de Canje
   const [showCanje, setShowCanje] = useState(false);
@@ -33,35 +36,46 @@ export const PosView = () => {
 
   const fileInputRef = useRef(null);
 
-  // Cargar Reglas de Puntos dinámicas desde la BD
+  // Cargar Reglas de Puntos dinámicas y Configuración de Billetera desde la BD
   useEffect(() => {
-    const fetchRules = async () => {
+    const fetchRulesAndSettings = async () => {
       try {
-        const rules = await loyaltyService.getRules();
+        const [rules, settings] = await Promise.all([
+          loyaltyService.getRules(),
+          loyaltyService.getSettings()
+        ]);
+
         if (rules && rules.length > 0) {
-          setActiveRules(rules.filter(r => r.is_active !== false));
+          const act = rules.filter(r => r.is_active !== false);
+          setActiveRules(act);
+
+          // Detectar la regla del día actual (1=Lunes ... 7=Domingo)
+          const jsDay = new Date().getDay();
+          const todayNum = jsDay === 0 ? 7 : jsDay;
+          const foundToday = act.find(r => r.dia_semana === todayNum) || act[0];
+          setTodayRule(foundToday);
+        }
+
+        if (settings) {
+          setWalletSettings(settings);
         }
       } catch (err) {
-        console.error("Error al obtener reglas de puntos para Caja POS:", err);
+        console.error("Error al obtener reglas o configuración para Caja POS:", err);
       }
     };
-    fetchRules();
+    fetchRulesAndSettings();
   }, []);
 
-  // Calcular Puntos dinámicamente según la regla activa configurada por el administrador
+  // Calcular Puntos dinámicamente según la regla del día de la semana
   useEffect(() => {
     const val = parseFloat(valorAcumular) || 0;
     if (modalidad === 'monto') {
-      if (activeRules.length > 0) {
-        const rule = activeRules[0]; // Usar la primera regla activa
-        if (rule.monto_dinero > 0) {
-          const pts = Math.floor(val / rule.monto_dinero) * rule.puntos_otorgados;
-          setPuntosCalculados(pts);
-        } else {
-          setPuntosCalculados(Math.floor(val / 10));
-        }
+      const rule = todayRule || activeRules[0];
+      if (rule && rule.monto_dinero > 0) {
+        const pts = Math.floor(val / rule.monto_dinero) * rule.puntos_otorgados;
+        setPuntosCalculados(pts);
       } else {
-        // Regla por defecto ($10 = 1 punto) si no hay reglas configuradas en BD
+        // Regla por defecto ($10 = 1 punto) si no hay reglas
         setPuntosCalculados(Math.floor(val / 10));
       }
     } else if (modalidad === 'directo') {
@@ -69,7 +83,8 @@ export const PosView = () => {
     } else if (modalidad === 'visita') {
       setPuntosCalculados(parseInt(val) || 0);
     }
-  }, [modalidad, valorAcumular, activeRules]);
+  }, [modalidad, valorAcumular, todayRule, activeRules]);
+
 
   // Manejador del escáner con cámara en vivo
   useEffect(() => {
@@ -261,7 +276,29 @@ export const PosView = () => {
     }
   };
 
+  const handleRedeemStamps = async () => {
+    if (!customer) return;
+    const premio = walletSettings?.recompensa_sellos_descripcion || 'Bebida de cortesía a elegir';
+    const confirm = window.confirm(`¿Confirmas la entrega de "${premio}" a ${customer.first_name} ${customer.last_name}?\n\nAl confirmar, los sellos del cliente se reiniciarán a 0.`);
+    if (!confirm) return;
+
+    setCanjeandoSellos(true);
+    try {
+      await userService.redeemStamps(customer.id);
+      setCustomer(prev => ({
+        ...prev,
+        current_stamps: 0
+      }));
+      alert(`¡Recompensa entregada con éxito! Se entregó "${premio}". La tarjeta del cliente ahora tiene 0 sellos.`);
+    } catch (err) {
+      alert("Error al canjear sellos: " + (err.response?.data?.detail || err.message));
+    } finally {
+      setCanjeandoSellos(false);
+    }
+  };
+
   const seleccionarModalidad = (mod) => {
+
     setModalidad(mod);
     if (mod === 'monto') setValorAcumular('0.00');
     else if (mod === 'directo') setValorAcumular('10');
@@ -446,9 +483,82 @@ export const PosView = () => {
             Tel: <span id="lblTelefono" className="badge-code">{customer.phone}</span>
           </p>
 
+          {/* BANNER CELEBRACIÓN: TARJETA DE 10 SELLOS COMPLETA */}
+          {((customer.current_stamps || 0) >= 10) && (
+            <div style={{
+              background: 'linear-gradient(135deg, #FFF9E6 0%, #FFFDF5 100%)',
+              border: '2px solid #E2A03F',
+              borderRadius: '16px',
+              padding: '16px',
+              margin: '14px 0',
+              textAlign: 'center',
+              boxShadow: '0 4px 14px rgba(226, 160, 63, 0.25)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#945800', fontWeight: 800, fontSize: '1.05rem' }}>
+                <Gift size={22} color="#E2A03F" />
+                <span>🎉 ¡TARJETA DE 10 SELLOS COMPLETA!</span>
+              </div>
+              
+              <p style={{ margin: '8px 0 12px 0', fontSize: '0.9rem', color: '#664D03' }}>
+                Premio a entregar: <strong style={{ fontSize: '1rem', color: '#734F2F' }}>
+                  {walletSettings?.recompensa_sellos_descripcion || 'Bebida de cortesía a elegir'}
+                </strong>
+              </p>
+
+              <button
+                type="button"
+                className="btn"
+                disabled={canjeandoSellos}
+                onClick={handleRedeemStamps}
+                style={{
+                  background: 'linear-gradient(135deg, #E2A03F 0%, #D49232 100%)',
+                  color: '#FFF',
+                  fontWeight: 800,
+                  fontSize: '0.95rem',
+                  padding: '12px 20px',
+                  width: '100%',
+                  borderRadius: '12px',
+                  border: 'none',
+                  cursor: canjeandoSellos ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                {canjeandoSellos ? <RefreshCw size={18} className="spin" /> : <Gift size={18} />}
+                <span>{canjeandoSellos ? 'Canjeando...' : 'Entregar Premio y Resetear a 0 Sellos'}</span>
+              </button>
+            </div>
+          )}
+
           <hr style={{ border: 0, borderTop: '1.5px solid #CFD989', margin: '15px 0' }} />
 
+          {/* BANNER PROMOCIÓN DEL DÍA DINÁMICA */}
+          {todayRule && (
+            <div style={{
+              background: '#EAF3DE',
+              color: '#2e7d32',
+              border: '1px solid #C0DD97',
+              borderRadius: '12px',
+              padding: '10px 14px',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              marginBottom: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <Sparkles size={18} color="#2e7d32" />
+              <span>
+                💡 Promo de Hoy ({todayRule.dia_nombre}): Por cada ${todayRule.monto_dinero} obtén {todayRule.puntos_otorgados} pts.
+              </span>
+            </div>
+          )}
+
           <label>MODALIDAD DE ACUMULACIÓN</label>
+
           <div className="tab-group">
             <div
               className={`tab-btn ${modalidad === 'monto' ? 'active' : ''}`}

@@ -12,12 +12,13 @@ router = APIRouter(prefix="/products", tags=["Products & Rewards"])
 @router.get(
     "/",
     response_model=List[ProductResponse],
-    summary="List available reward products",
-    description="Retrieve catalog of products available for points redemption."
+    summary="List available reward products or menu items",
+    description="Retrieve catalog of products available for points redemption or sale menu."
 )
 @limiter.limit("60/minute")
-def list_products(request: Request):
-    return product_service.get_products()
+def list_products(request: Request, tipo: Optional[str] = None):
+    return product_service.get_products(tipo=tipo)
+
 
 
 @router.post(

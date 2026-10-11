@@ -5,6 +5,7 @@ import { productService } from '../../services/api';
 export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
   const [formData, setFormData] = useState({
     producto: '',
+    tipo: 'recompensa', // 'recompensa' | 'venta'
     puntos_requeridos: 50,
     precio: 0.00,
     piezas_disponibles: 10,
@@ -21,7 +22,8 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
     if (productToEdit) {
       setFormData({
         producto: productToEdit.producto || productToEdit.descripcion || '',
-        puntos_requeridos: productToEdit.puntos_requeridos || productToEdit.puntos || 50,
+        tipo: productToEdit.tipo || (productToEdit.puntos_requeridos > 0 ? 'recompensa' : 'venta'),
+        puntos_requeridos: productToEdit.puntos_requeridos || productToEdit.puntos || 0,
         precio: productToEdit.precio || 0.00,
         piezas_disponibles: productToEdit.piezas_disponibles !== undefined ? productToEdit.piezas_disponibles : (productToEdit.disponibles || 10),
         imagen_url: productToEdit.imagen_url || ''
@@ -62,8 +64,13 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
       return;
     }
 
-    if (formData.puntos_requeridos <= 0) {
-      setError('Los puntos requeridos deben ser mayores a 0.');
+    if (formData.tipo === 'recompensa' && formData.puntos_requeridos <= 0) {
+      setError('Los puntos requeridos deben ser mayores a 0 para una recompensa.');
+      return;
+    }
+
+    if (formData.tipo === 'venta' && formData.precio <= 0) {
+      setError('El precio en dinero ($) debe ser mayor a 0 para un producto de venta.');
       return;
     }
 
@@ -71,22 +78,19 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
     let finalImageUrl = formData.imagen_url;
 
     try {
-      // 1. Si hay un archivo seleccionado, subirlo primero a Google Drive
       if (selectedFile) {
         setUploading(true);
         const uploadRes = await productService.uploadProductImage(selectedFile);
-        if (uploadRes && uploadRes.imagen_url) {
-          finalImageUrl = uploadRes.imagen_url;
-        } else {
-          throw new Error("No se pudo obtener la URL de la imagen en Google Drive.");
+        if (uploadRes && (uploadRes.imagen_url || uploadRes.url)) {
+          finalImageUrl = uploadRes.imagen_url || uploadRes.url;
         }
         setUploading(false);
       }
 
-      // 2. Guardar o actualizar producto con la URL de la imagen
       const payload = {
         producto: formData.producto.trim(),
-        puntos_requeridos: parseInt(formData.puntos_requeridos),
+        tipo: formData.tipo,
+        puntos_requeridos: formData.tipo === 'recompensa' ? parseInt(formData.puntos_requeridos) : 0,
         precio: parseFloat(formData.precio) || 0,
         piezas_disponibles: parseInt(formData.piezas_disponibles) || 0,
         imagen_url: finalImageUrl ? finalImageUrl.trim() : null
@@ -102,13 +106,14 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
       onSaved();
       onClose();
     } catch (err) {
-      const msg = err.response?.data?.detail || err.message || 'Error al procesar la recompensa.';
+      const msg = err.response?.data?.detail || err.message || 'Error al procesar el producto.';
       setError(msg);
     } finally {
       setSaving(false);
       setUploading(false);
     }
   };
+
 
   return (
     <div className="modal-overlay" onClick={onClose} style={{
@@ -202,17 +207,74 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
             </div>
           )}
 
+          {/* Tipo de Producto: Recompensa vs Venta */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#4A331E', marginBottom: '8px' }}>
+              Finalidad del Producto *
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, tipo: 'recompensa' }))}
+                style={{
+                  padding: '10px',
+                  borderRadius: '10px',
+                  border: formData.tipo === 'recompensa' ? '2px solid #788C5A' : '1px solid #D5C8B5',
+                  background: formData.tipo === 'recompensa' ? '#FAF7F2' : '#FFF',
+                  color: formData.tipo === 'recompensa' ? '#788C5A' : '#777',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                <Gift size={18} />
+                <span>🎁 Recompensa (Puntos)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, tipo: 'venta' }))}
+                style={{
+                  padding: '10px',
+                  borderRadius: '10px',
+                  border: formData.tipo === 'venta' ? '2px solid #734F2F' : '1px solid #D5C8B5',
+                  background: formData.tipo === 'venta' ? '#FAF7F2' : '#FFF',
+                  color: formData.tipo === 'venta' ? '#734F2F' : '#777',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                <DollarSign size={18} />
+                <span>☕ Venta (Menú)</span>
+              </button>
+            </div>
+            <small style={{ color: '#777', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+              {formData.tipo === 'venta' 
+                ? 'Aparecerá en el Menú digital para consulta de los clientes con precio en dinero ($).' 
+                : 'Se ofrecerá en el catálogo para canjear con puntos acumulados.'}
+            </small>
+          </div>
+
           {/* Nombre del Producto */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#4A331E', marginBottom: '6px' }}>
-              Nombre de la Recompensa *
+              Nombre del Producto *
             </label>
             <input 
               type="text" 
               name="producto" 
               value={formData.producto} 
               onChange={handleChange}
-              placeholder="Ej. Capuchino Gratis 350ml, Dona Glaseada..." 
+              placeholder={formData.tipo === 'venta' ? "Ej. Café Espresso Doble, Panini de Pollo..." : "Ej. Capuchino Gratis 350ml, Dona Glaseada..."} 
               required 
               style={{
                 width: '100%',
@@ -228,33 +290,36 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
 
           {/* Puntos Requeridos y Precio Comercial */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-            <div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: '600', color: '#4A331E', marginBottom: '6px' }}>
-                <Award size={16} color="#788C5A" />
-                Puntos Necesarios *
-              </label>
-              <input 
-                type="number" 
-                name="puntos_requeridos" 
-                value={formData.puntos_requeridos} 
-                onChange={handleChange}
-                min="1"
-                required 
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: '10px',
-                  border: '1px solid #D5C8B5',
-                  fontSize: '0.9rem',
-                  background: '#FFF',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-            <div>
+            {formData.tipo === 'recompensa' ? (
+              <div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: '600', color: '#4A331E', marginBottom: '6px' }}>
+                  <Award size={16} color="#788C5A" />
+                  Puntos Necesarios *
+                </label>
+                <input 
+                  type="number" 
+                  name="puntos_requeridos" 
+                  value={formData.puntos_requeridos} 
+                  onChange={handleChange}
+                  min="1"
+                  required 
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    border: '1px solid #D5C8B5',
+                    fontSize: '0.9rem',
+                    background: '#FFF',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            ) : null}
+
+            <div style={{ gridColumn: formData.tipo === 'venta' ? '1 / -1' : 'auto' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: '600', color: '#4A331E', marginBottom: '6px' }}>
                 <DollarSign size={16} color="#788C5A" />
-                Precio Ref. ($ MXN)
+                {formData.tipo === 'venta' ? 'Precio de Venta ($ MXN) *' : 'Precio Ref. ($ MXN)'}
               </label>
               <input 
                 type="number" 
@@ -263,6 +328,7 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
                 value={formData.precio} 
                 onChange={handleChange}
                 min="0"
+                required={formData.tipo === 'venta'}
                 style={{
                   width: '100%',
                   padding: '10px 14px',
@@ -275,6 +341,7 @@ export const RewardProductFormModal = ({ productToEdit, onClose, onSaved }) => {
               />
             </div>
           </div>
+
 
           {/* Stock Piezas Disponibles */}
           <div style={{ marginBottom: '16px' }}>

@@ -134,3 +134,18 @@ def get_user_transactions(
     service: UserService = Depends(get_user_service)
 ):
     return service.get_user_transactions(user_id)
+
+
+@router.post(
+    "/{user_id}/redeem-stamps",
+    summary="Redeem completed 10-stamp card",
+    description="Redeems a completed 10-stamp card, resets stamps to 0, logs redemption transaction, and syncs wallet."
+)
+@limiter.limit("30/minute")
+def redeem_user_stamps(
+    request: Request,
+    user_id: str,
+    service: UserService = Depends(get_user_service)
+):
+    return service.redeem_user_stamps(user_id)
+

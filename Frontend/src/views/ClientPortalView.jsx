@@ -20,22 +20,42 @@ export function ClientPortalView() {
   const [redeemingId, setRedeemingId] = useState(null);
   const [stampImagesMap, setStampImagesMap] = useState([]);
 
+  // Menú de Cafetería (solo productos con bandera 'venta')
+  const [showMenuModal, setShowMenuModal] = useState(false);
+  const [menuProducts, setMenuProducts] = useState([]);
+  const [loadingMenu, setLoadingMenu] = useState(false);
+
+  // Configuración de billetera (redes sociales y caducidad de puntos)
+  const [walletSettings, setWalletSettings] = useState({
+    dias_caducidad_puntos: 90,
+    instagram_url: 'https://instagram.com/cafeteria',
+    facebook_url: 'https://facebook.com/cafeteria',
+    terminos_url: 'https://cafeteria.com/terminos'
+  });
+
   const currentStampsCount = registeredClient?.current_stamps || 0;
   const matchedStampObj = stampImagesMap.find(s => s.stamp_count === currentStampsCount || s.nivel_sello === currentStampsCount);
   const displayStampImg = registeredClient?.wallet_hero_image_url || (matchedStampObj ? (matchedStampObj.image_url || matchedStampObj.wallet_hero_url || matchedStampObj.imagen_url) : null);
 
-  // Cargar mapeo global de imágenes de sellos como respaldo
+  // Cargar mapeo global de imágenes de sellos y configuración de billetera
   useEffect(() => {
     const fetchStampImagesMap = async () => {
       try {
-        const imgs = await loyaltyService.getStampLevels();
+        const [imgs, settings] = await Promise.all([
+          loyaltyService.getStampLevels(),
+          loyaltyService.getSettings()
+        ]);
         setStampImagesMap(imgs || []);
+        if (settings) {
+          setWalletSettings(prev => ({ ...prev, ...settings }));
+        }
       } catch (err) {
-        console.error("Error cargando mapeo de sellos:", err);
+        console.error("Error cargando configuración:", err);
       }
     };
     fetchStampImagesMap();
   }, []);
+
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -62,14 +82,28 @@ export function ClientPortalView() {
   const loadProducts = async () => {
     setLoadingProducts(true);
     try {
-      const data = await productService.getProducts();
+      const data = await productService.getProducts('recompensa');
       setProducts(data || []);
     } catch (err) {
-      console.error("Error al cargar productos:", err);
+      console.error("Error al cargar recompensas:", err);
     } finally {
       setLoadingProducts(false);
     }
   };
+
+  const handleOpenMenu = async () => {
+    setShowMenuModal(true);
+    setLoadingMenu(true);
+    try {
+      const data = await productService.getProducts('venta');
+      setMenuProducts(data || []);
+    } catch (err) {
+      console.error("Error al cargar menú de venta:", err);
+    } finally {
+      setLoadingMenu(false);
+    }
+  };
+
 
   // Wallet Pass State
   const [loadingWallet, setLoadingWallet] = useState(false);
@@ -526,12 +560,45 @@ export function ClientPortalView() {
             <div style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.9, marginBottom: '4px' }}>
               Puntos Acumulados
             </div>
+
             
-            <div style={{ background: 'var(--secondary)', color: 'var(--text)', fontWeight: 900, fontSize: '2rem', padding: '8px 24px', borderRadius: '14px', display: 'inline-block', marginBottom: '16px', boxShadow: '0 4px 10px rgba(0,0,0,0.15)' }}>
+            <div style={{ background: 'var(--secondary)', color: 'var(--text)', fontWeight: 900, fontSize: '2rem', padding: '8px 24px', borderRadius: '14px', display: 'inline-block', marginBottom: '8px', boxShadow: '0 4px 10px rgba(0,0,0,0.15)' }}>
               {registeredClient.puntos || 0} <span style={{ fontSize: '1rem' }}>PTS</span>
             </div>
 
+            {/* Caducidad de Puntos */}
+            {walletSettings.dias_caducidad_puntos > 0 ? (
+              <div style={{ fontSize: '0.78rem', color: '#E8DFD1', marginBottom: '14px', fontWeight: 600 }}>
+                ⏰ Vigencia de puntos: {walletSettings.dias_caducidad_puntos} días
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.78rem', color: '#E8DFD1', marginBottom: '14px', fontWeight: 600 }}>
+                ✨ Tus puntos no tienen fecha de caducidad
+              </div>
+            )}
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {/* BOTÓN VER MENÚ DE CAFETERÍA */}
+              <button 
+                className="btn"
+                onClick={handleOpenMenu}
+                style={{ 
+                  background: '#FFFDF9', 
+                  color: '#4A331E', 
+                  fontSize: '1rem', 
+                  fontWeight: 800, 
+                  border: '1.5px solid #D5C8B5', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '8px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.06)'
+                }}
+              >
+                <Coffee size={20} color="#734F2F" />
+                <span>☕ Ver Menú de la Cafetería</span>
+              </button>
+
               {/* BOTÓN RECLAMAR RECOMPENSAS */}
               <button 
                 className="btn"
@@ -595,12 +662,176 @@ export function ClientPortalView() {
                 </svg>
                 <span>Añadir a Apple Wallet</span>
               </button>
+            </div>
 
-
+            {/* SECCIÓN REDES SOCIALES Y TÉRMINOS */}
+            <div style={{
+              marginTop: '16px',
+              padding: '14px',
+              background: '#FAF7F2',
+              borderRadius: '16px',
+              border: '1px solid #E8DFD1',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#7E6B5A', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Síguenos en Redes Sociales
+              </span>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                {walletSettings.instagram_url && (
+                  <a 
+                    href={walletSettings.instagram_url} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      background: '#FFF',
+                      border: '1px solid #D5C8B5',
+                      borderRadius: '10px',
+                      fontSize: '0.8rem',
+                      color: '#734F2F',
+                      textDecoration: 'none',
+                      fontWeight: 700
+                    }}
+                  >
+                    📸 Instagram
+                  </a>
+                )}
+                {walletSettings.facebook_url && (
+                  <a 
+                    href={walletSettings.facebook_url} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      background: '#FFF',
+                      border: '1px solid #D5C8B5',
+                      borderRadius: '10px',
+                      fontSize: '0.8rem',
+                      color: '#734F2F',
+                      textDecoration: 'none',
+                      fontWeight: 700
+                    }}
+                  >
+                    🌐 Facebook
+                  </a>
+                )}
+              </div>
+              {walletSettings.terminos_url && (
+                <a 
+                  href={walletSettings.terminos_url} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  style={{ fontSize: '0.72rem', color: '#7E6B5A', textDecoration: 'underline', marginTop: '2px' }}
+                >
+                  Términos y Condiciones del Programa
+                </a>
+              )}
             </div>
           </div>
         </div>
       )}
+
+      {/* MODAL / MENÚ DE PRODUCTOS DE LA CAFETERÍA (SOLO VENTA) */}
+      {showMenuModal && (
+        <div className="modal-overlay" onClick={() => setShowMenuModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '460px', maxHeight: '85vh', overflowY: 'auto' }}>
+            <div style={{ background: '#734F2F', color: 'white', padding: '16px 20px', borderRadius: '18px 18px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Coffee size={24} color="#CFD989" />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'white' }}>Menú de la Cafetería</h3>
+                  <div style={{ fontSize: '0.78rem', color: '#E8DFD1' }}>
+                    Productos y bebidas disponibles
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowMenuModal(false)}
+                style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={22} />
+              </button>
+            </div>
+
+            <div style={{ padding: '16px' }}>
+              {loadingMenu ? (
+                <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontWeight: 700 }}>
+                  Cargando menú de la cafetería...
+                </div>
+              ) : menuProducts.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                  No hay productos disponibles en el menú por el momento.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {menuProducts.map((prod) => (
+                    <div 
+                      key={prod.id_prod || prod.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        background: '#FFFDF9',
+                        border: '1px solid #E8DFD1',
+                        borderRadius: '14px',
+                        padding: '10px 14px',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+                      }}
+                    >
+                      <div style={{
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        background: '#FAF7F2',
+                        flexShrink: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '1px solid #E8DFD1'
+                      }}>
+                        {prod.imagen_url ? (
+                          <img src={prod.imagen_url} alt={prod.producto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                        ) : (
+                          <Coffee size={26} color="#734F2F" />
+                        )}
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#4A331E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {prod.producto}
+                        </h4>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                          <span style={{ fontSize: '1rem', fontWeight: 800, color: '#734F2F' }}>
+                            ${parseFloat(prod.precio || 0).toFixed(2)} MXN
+                          </span>
+                          {(prod.piezas_disponibles !== undefined && prod.piezas_disponibles <= 0) && (
+                            <span style={{ fontSize: '0.72rem', color: '#D9534F', fontWeight: 700 }}>Agotado</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '0.78rem', color: '#7E6B5A', background: '#FAF7F2', padding: '10px', borderRadius: '10px' }}>
+                    ℹ️ Menú exclusivamente informativo. Ordena y paga tus productos en el mostrador de caja.
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+
 
       {/* MODAL / MENÚ DE CATÁLOGO DE RECOMPENSAS */}
       {showRewardsModal && (
