@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = "dev_secret_key_change_in_production_cafeteria_loyalty"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 hours
+    DEFAULT_RATE_LIMIT: str = "100/minute"
 
     # CORS Origins (comma separated in env or list)
     BACKEND_CORS_ORIGINS: Union[List[str], str] = [
