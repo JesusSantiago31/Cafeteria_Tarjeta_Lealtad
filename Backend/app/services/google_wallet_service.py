@@ -95,11 +95,15 @@ class GoogleWalletService:
             class_id = f"{self.issuer_id}.{raw_class_id}"
             clean_class_slug = re.sub(r'[^a-zA-Z0-9_]', '_', raw_class_id)
 
-        # Dynamic Object ID format based on class version to allow multiple distinct card instances
+        # Determine if this class is a native LoyaltyClass in Google Wallet
+        class_type = self._get_class_type(class_id)
+
+        # Distinct Loyalty Object ID format to guarantee fresh native Loyalty pass instance
+        prefix = "loy_" if class_type == "loyaltyClass" else ""
         if phone_clean:
-            pass_id = f"{self.issuer_id}.{clean_class_slug}_{phone_clean}"
+            pass_id = f"{self.issuer_id}.{prefix}{clean_class_slug}_{phone_clean}"
         else:
-            pass_id = f"{self.issuer_id}.{clean_class_slug}_{user_id.replace('-', '_')}"
+            pass_id = f"{self.issuer_id}.{prefix}{clean_class_slug}_{user_id.replace('-', '_')}"
 
         # Retrieve wallet settings for social links, expiration, and static stamp reward
         try:
@@ -135,7 +139,14 @@ class GoogleWalletService:
         if facebook_url:
             social_links.append({"uri": facebook_url, "description": "Facebook", "id": "link_fb"})
         if terminos_url:
-            social_links.append({"uri": terminos_url, "description": "Términos y Condiciones", "id": "link_terms"})
+            social_links.append({"uri": terminos_url, "description": "Tik-Tok", "id": "link_terms"})
+
+        merchant_locations = [
+            {
+                "latitude": float(getattr(settings, "CAFETERIA_LATITUDE", 19.9520188)),
+                "longitude": float(getattr(settings, "CAFETERIA_LONGITUDE", -99.5343952))
+            }
+        ]
 
         locations = [
             {
@@ -191,8 +202,6 @@ class GoogleWalletService:
             }
         ]
 
-        # Determine if this class is a native LoyaltyClass in Google Wallet
-        class_type = self._get_class_type(class_id)
         now = int(time.time())
 
         if class_type == "loyaltyClass":
@@ -221,6 +230,7 @@ class GoogleWalletService:
                     "alternateText": phone_raw
                 },
                 "hexBackgroundColor": settings.CAFETERIA_BG_COLOR,
+                "merchantLocations": merchant_locations,
                 "locations": locations,
                 "messages": messages,
                 "textModulesData": text_modules
@@ -386,10 +396,20 @@ class GoogleWalletService:
         clean_class_slug = re.sub(r'[^a-zA-Z0-9_]', '_', raw_class_id.split(".")[-1] if "." in raw_class_id else raw_class_id)
         class_id = raw_class_id if "." in raw_class_id else f"{self.issuer_id}.{raw_class_id}"
 
+        class_type = self._get_class_type(class_id)
+        prefix = "loy_" if class_type == "loyaltyClass" else ""
+
         if phone_clean:
-            pass_id = f"{self.issuer_id}.{clean_class_slug}_{phone_clean}"
+            pass_id = f"{self.issuer_id}.{prefix}{clean_class_slug}_{phone_clean}"
         else:
-            pass_id = f"{self.issuer_id}.{clean_class_slug}_{user_id.replace('-', '_')}"
+            pass_id = f"{self.issuer_id}.{prefix}{clean_class_slug}_{user_id.replace('-', '_')}"
+
+        merchant_locations = [
+            {
+                "latitude": float(getattr(settings, "CAFETERIA_LATITUDE", 19.9520188)),
+                "longitude": float(getattr(settings, "CAFETERIA_LONGITUDE", -99.5343952))
+            }
+        ]
 
         locations = [
             {
@@ -399,7 +419,6 @@ class GoogleWalletService:
             }
         ]
 
-        class_type = self._get_class_type(class_id)
         access_token = self._get_access_token()
 
         if access_token:
@@ -411,6 +430,7 @@ class GoogleWalletService:
                     patch_url = f"https://walletobjects.googleapis.com/walletobjects/v1/loyaltyObject/{pass_id}"
                     loyalty_patch: Dict[str, Any] = {
                         "hexBackgroundColor": settings.CAFETERIA_BG_COLOR,
+                        "merchantLocations": merchant_locations,
                         "locations": locations,
                         "loyaltyPoints": {
                             "label": "Puntos Disponibles",
