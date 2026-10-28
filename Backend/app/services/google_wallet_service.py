@@ -218,11 +218,7 @@ class GoogleWalletService:
             "iat": now,
             "exp": now + 3600,
             "payload": {
-                "genericClasses": [
-                    {
-                        "id": class_id
-                    }
-                ],
+                "genericClasses": [generic_class],
                 "genericObjects": [generic_object]
             }
         }
@@ -500,6 +496,23 @@ class GoogleWalletService:
                     timeout=5
                 )
                 print(f"[GoogleWalletService] Sync Class definition '{class_id}' color '{generic_class.get('hexBackgroundColor')}': HTTP {put_res.status_code}")
+                
+                # If class does not exist yet (404/400), automatically create it via POST
+                if put_res.status_code in (404, 400):
+                    print(f"[GoogleWalletService] PUT response info: {put_res.text[:300]}")
+                    post_url = "https://walletobjects.googleapis.com/walletobjects/v1/genericClass"
+                    post_res = requests.post(
+                        post_url,
+                        headers={
+                            "Authorization": f"Bearer {access_token}",
+                            "Content-Type": "application/json"
+                        },
+                        json=generic_class,
+                        timeout=5
+                    )
+                    print(f"[GoogleWalletService] Attempted POST to create Class '{class_id}': HTTP {post_res.status_code}")
+                    if post_res.status_code not in (200, 201):
+                        print(f"[GoogleWalletService] POST Class error detail: {post_res.text[:400]}")
         except Exception as e:
             print(f"[GoogleWalletService] Sync class warning: {e}")
 
