@@ -29,24 +29,24 @@ class GoogleWalletService:
         purchases_count = user.get("total_purchases_count", 0)
         total_earned = user.get("total_points_earned", 0)
 
-        # Object ID format matching gen_v6_ convention
-        if phone_clean:
-            pass_id = f"{self.issuer_id}.gen_v6_{phone_clean}"
-        else:
-            pass_id = f"{self.issuer_id}.gen_v6_{user_id.replace('-', '_')}"
-
         raw_class_id = (settings.GOOGLE_CLASS_ID or "cafeteria_generic_v6").strip().strip('"').strip("'")
         if "." in raw_class_id:
             class_id = raw_class_id
+            clean_class_slug = re.sub(r'[^a-zA-Z0-9_]', '_', raw_class_id.split(".")[-1])
         else:
             class_id = f"{self.issuer_id}.{raw_class_id}"
+            clean_class_slug = re.sub(r'[^a-zA-Z0-9_]', '_', raw_class_id)
 
-
-
+        # Dynamic Object ID format based on class version to allow multiple distinct card instances
+        if phone_clean:
+            pass_id = f"{self.issuer_id}.{clean_class_slug}_{phone_clean}"
+        else:
+            pass_id = f"{self.issuer_id}.{clean_class_slug}_{user_id.replace('-', '_')}"
 
         # Build Generic Class Definition (Card template)
         generic_class: Dict[str, Any] = {
             "id": class_id,
+            "hexBackgroundColor": settings.CAFETERIA_BG_COLOR,
             "logo": {
                 "sourceUri": {
                     "uri": settings.CAFETERIA_LOGO_URL
@@ -275,10 +275,13 @@ class GoogleWalletService:
         total_earned = user.get("total_points_earned", 0)
         hero_url = user.get("wallet_hero_image_url") or settings.CAFETERIA_HERO_IMAGE_URL
 
+        raw_class_id = (settings.GOOGLE_CLASS_ID or "cafeteria_generic_v6").strip().strip('"').strip("'")
+        clean_class_slug = re.sub(r'[^a-zA-Z0-9_]', '_', raw_class_id.split(".")[-1] if "." in raw_class_id else raw_class_id)
+
         if phone_clean:
-            pass_id = f"{self.issuer_id}.gen_v6_{phone_clean}"
+            pass_id = f"{self.issuer_id}.{clean_class_slug}_{phone_clean}"
         else:
-            pass_id = f"{self.issuer_id}.gen_v6_{user_id.replace('-', '_')}"
+            pass_id = f"{self.issuer_id}.{clean_class_slug}_{user_id.replace('-', '_')}"
 
         updated_object: Dict[str, Any] = {
             "hexBackgroundColor": settings.CAFETERIA_BG_COLOR,

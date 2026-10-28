@@ -42,6 +42,8 @@ export const AdminLoyaltyView = () => {
   const [savingRules, setSavingRules] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [broadcasting, setBroadcasting] = useState(false);
+  const [dailyPromoStatus, setDailyPromoStatus] = useState(null);
+  const [triggeringDaily, setTriggeringDaily] = useState(false);
 
   // Notificación personalizada
   const [notifHeader, setNotifHeader] = useState('');
@@ -57,11 +59,16 @@ export const AdminLoyaltyView = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [rulesData, stampsData, settingsData] = await Promise.all([
+      const [rulesData, stampsData, settingsData, promoStatusData] = await Promise.all([
         loyaltyService.getRules(),
         loyaltyService.getStampLevels(),
-        loyaltyService.getSettings()
+        loyaltyService.getSettings(),
+        loyaltyService.getDailyPromoStatus().catch(() => null)
       ]);
+
+      if (promoStatusData) {
+        setDailyPromoStatus(promoStatusData);
+      }
 
       // Mapear regla por defecto y los 7 días de la semana
       if (rulesData && rulesData.length > 0) {
@@ -180,6 +187,21 @@ export const AdminLoyaltyView = () => {
       alert("Error al transmitir oferta: " + (err.response?.data?.detail || err.message));
     } finally {
       setBroadcasting(false);
+    }
+  };
+
+  const handleTriggerDailyNow = async () => {
+    setTriggeringDaily(true);
+    try {
+      const res = await loyaltyService.triggerDailyPromo();
+      setMsg(`¡${res.message || 'Promoción de hoy enviada con éxito'}!`);
+      setTimeout(() => setMsg(null), 4000);
+      const updatedStatus = await loyaltyService.getDailyPromoStatus().catch(() => null);
+      if (updatedStatus) setDailyPromoStatus(updatedStatus);
+    } catch (err) {
+      alert("Error al enviar promoción diaria: " + (err.response?.data?.detail || err.message));
+    } finally {
+      setTriggeringDaily(false);
     }
   };
 
@@ -498,6 +520,90 @@ export const AdminLoyaltyView = () => {
         <p style={{ fontSize: '0.85rem', color: '#666', marginTop: 0 }}>
           Envía una notificación push instantánea a las tarjetas instaladas en los dispositivos móviles de tus clientes (Google Pay / Google Wallet) para anunciar promociones, horarios especiales o descuentos.
         </p>
+
+        {/* Tarjeta de Programación Automática Diaria (11:30 AM CDMX) */}
+        <div style={{
+          background: '#FFFBEB',
+          border: '1.5px solid #F59E0B',
+          borderRadius: '12px',
+          padding: '16px',
+          marginTop: '12px',
+          marginBottom: '16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <Clock size={20} color="#B45309" />
+              <span style={{ fontWeight: 800, color: '#78350F', fontSize: '0.92rem' }}>
+                Notificación Automática Diaria
+              </span>
+              <span style={{
+                background: '#D1FAE5',
+                color: '#065F46',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '20px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10B981' }}></span>
+                Activa: 11:30 AM (Hora Centro de México)
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleTriggerDailyNow}
+              disabled={triggeringDaily}
+              style={{
+                background: '#B45309',
+                color: '#FFF',
+                border: 'none',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 6px rgba(180, 83, 9, 0.25)'
+              }}
+            >
+              {triggeringDaily ? <RefreshCw size={14} className="spin" /> : <Sparkles size={14} />}
+              <span>{triggeringDaily ? 'Transmitiendo...' : 'Probar Notificación de Hoy Ahora'}</span>
+            </button>
+          </div>
+
+          {dailyPromoStatus && (
+            <div style={{ background: '#FFF', padding: '12px 14px', borderRadius: '8px', border: '1px solid #FDE68A', fontSize: '0.82rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+                <div>
+                  <span style={{ color: '#92400E', fontWeight: 800, display: 'block', marginBottom: '2px' }}>
+                    Promoción para hoy ({dailyPromoStatus.today_promo?.dia_nombre}):
+                  </span>
+                  <span style={{ color: '#1F2937', fontWeight: 700 }}>{dailyPromoStatus.today_promo?.header}</span>
+                  <p style={{ margin: '3px 0 0', color: '#4B5563', fontSize: '0.78rem' }}>"{dailyPromoStatus.today_promo?.body}"</p>
+                </div>
+                <div style={{ borderLeft: '1px solid #F3F4F6', paddingLeft: '12px' }}>
+                  <span style={{ color: '#92400E', fontWeight: 800, display: 'block', marginBottom: '2px' }}>
+                    Próximo envío programado:
+                  </span>
+                  <span style={{ color: '#1F2937', fontWeight: 600 }}>
+                    {dailyPromoStatus.next_run_cdmx} (en ~{dailyPromoStatus.hours_until_next_run} h)
+                  </span>
+                  <span style={{ display: 'block', color: '#6B7280', fontSize: '0.74rem', marginTop: '3px' }}>
+                    Hora actual CDMX: {dailyPromoStatus.current_time_cdmx}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         <form onSubmit={handleSendCustomNotification} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '12px' }}>

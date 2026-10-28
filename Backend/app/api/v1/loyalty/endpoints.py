@@ -47,6 +47,16 @@ def broadcast_wallet_notification(body: dict):
     msg_body = body.get("body") or "Aprovecha nuestras promociones exclusivas en la cafetería."
     return google_wallet_service.broadcast_push_notification(header, msg_body)
 
+@router.get("/wallet/daily-promo-status")
+def get_daily_promo_status():
+    from app.services.daily_notification_service import daily_notification_service
+    return daily_notification_service.get_status()
+
+@router.post("/wallet/trigger-daily-promo")
+def trigger_daily_promo_now():
+    from app.services.daily_notification_service import daily_notification_service
+    return daily_notification_service.send_daily_promo(is_manual=True)
+
 
 # --- Stamp Levels ---
 @router.get("/stamp-levels", response_model=List[StampLevelResponse])

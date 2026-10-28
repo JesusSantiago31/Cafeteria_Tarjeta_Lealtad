@@ -74,6 +74,11 @@ class Settings(BaseSettings):
     CAFETERIA_LATITUDE: float = 19.9520188
     CAFETERIA_LONGITUDE: float = -99.5343952
 
+    # Daily Push Notification Schedule (11:30 AM Mexico City Time)
+    DAILY_PROMO_ENABLED: bool = True
+    DAILY_PROMO_HOUR: int = 11
+    DAILY_PROMO_MINUTE: int = 30
+
 
 
 

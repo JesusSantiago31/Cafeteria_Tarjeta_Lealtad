@@ -171,6 +171,18 @@ export const loyaltyService = {
     return response.data;
   },
 
+  // Get daily promo scheduler status and preview
+  getDailyPromoStatus: async () => {
+    const response = await apiClient.get('/loyalty/wallet/daily-promo-status');
+    return response.data;
+  },
+
+  // Manually trigger today's daily promotion notification
+  triggerDailyPromo: async () => {
+    const response = await apiClient.post('/loyalty/wallet/trigger-daily-promo');
+    return response.data;
+  },
+
   // Get stamp levels / images
   getStampLevels: async () => {
     const response = await apiClient.get('/loyalty/stamp-levels');

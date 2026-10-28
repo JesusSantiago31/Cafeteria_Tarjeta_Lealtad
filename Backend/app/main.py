@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
@@ -10,12 +11,24 @@ from app.api.v1.loyalty.endpoints import router as loyalty_router
 from app.core.config import settings
 from app.core.rate_limiter import limiter
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Iniciar programador automático de notificaciones a las 11:30 AM CDMX
+    from app.services.daily_notification_service import daily_notification_service
+    daily_notification_service.start_scheduler()
+    yield
+    # Shutdown: Detener tareas en segundo plano
+    daily_notification_service.stop_scheduler()
+
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Setup Slowapi Rate Limiter
