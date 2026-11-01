@@ -137,12 +137,15 @@ class GoogleWalletService:
             }
 
         social_links = []
+        if terminos_url:
+            social_links.append({"uri": terminos_url, "description": "Términos y Condiciones", "id": "link_terms"})
         if instagram_url:
             social_links.append({"uri": instagram_url, "description": "Instagram", "id": "link_ig"})
         if facebook_url:
             social_links.append({"uri": facebook_url, "description": "Facebook", "id": "link_fb"})
-        if terminos_url:
-            social_links.append({"uri": terminos_url, "description": "Tik-Tok", "id": "link_terms"})
+        tiktok_url = w_settings.get("tiktok_url")
+        if tiktok_url:
+            social_links.append({"uri": tiktok_url, "description": "TikTok", "id": "link_tiktok"})
 
         merchant_locations = [
             {
@@ -461,8 +464,8 @@ class GoogleWalletService:
                         "messages": [
                             {
                                 "id": f"msg_update_{user_id}_{int(time.time())}",
-                                "header": "¡Notificación de Lealtad!",
-                                "body": f"¡Felicidades {user.get('first_name', '')}! Saldo actual: {stamps}/10 sellos y {points} pts.",
+                                "header": "Actualización de Saldo!",
+                                "body": f"Hola {user.get('first_name', '')}! Tu saldo actual es de {stamps}/10 sellos y {points} pts.",
                                 "messageType": "TEXT_AND_NOTIFY"
                             }
                         ],
@@ -486,6 +489,11 @@ class GoogleWalletService:
                                 "id": "codigo_cliente",
                                 "header": "CÓDIGO DE CLIENTE",
                                 "body": f"CEL-{phone_raw}"
+                            },
+                            {
+                                "id": "terminos_condiciones",
+                                "header": "TÉRMINOS Y CONDICIONES",
+                                "body": "El sistema de Lealtad se encuentra sujeto a los términos y condiciones de Margarita´s Café."
                             }
                         ]
                     }
