@@ -195,6 +195,19 @@ export const loyaltyService = {
     return response.data;
   },
 
+  // Direct upload stamp image to ImgBB and update stamp level
+  uploadStampImage: async (file, stampCount) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('stamp_count', stampCount);
+    const response = await apiClient.post('/loyalty/stamp-levels/upload-image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
   // Delete stamp level
   deleteStampLevel: async (stampCount) => {
     const response = await apiClient.delete(`/loyalty/stamp-levels/${stampCount}`);

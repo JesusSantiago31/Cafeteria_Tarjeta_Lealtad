@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, Trash2, Image as ImageIcon, Award, CheckCircle, RefreshCw, 
-  Calendar, Clock, Gift, Bell, Send, Share2, Globe, ShieldCheck, Sparkles 
+  Calendar, Clock, Gift, Bell, Send, Share2, Globe, ShieldCheck, Sparkles,
+  UploadCloud, CheckCircle2
 } from 'lucide-react';
 import { loyaltyService } from '../../services/api';
 
@@ -53,6 +54,9 @@ export const AdminLoyaltyView = () => {
   const [editingStamp, setEditingStamp] = useState(null);
   const [stampCountInput, setStampCountInput] = useState(0);
   const [imageUrlInput, setImageUrlInput] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [filePreview, setFilePreview] = useState(null);
+  const [uploadingCount, setUploadingCount] = useState(null);
 
   const [msg, setMsg] = useState(null);
 
@@ -205,25 +209,64 @@ export const AdminLoyaltyView = () => {
     }
   };
 
-  const handleSaveStampImage = async (e) => {
-    e.preventDefault();
-    if (!imageUrlInput.trim()) {
-      alert("Proporciona una URL válida de ImgBB.");
+  const handleDirectCardUpload = async (e, count) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor selecciona un archivo de imagen válido (PNG, JPG, WebP).');
       return;
     }
 
+    if (file.size > 10 * 1024 * 1024) {
+      alert('La imagen no debe superar los 10 MB.');
+      return;
+    }
+
+    setUploadingCount(count);
     try {
-      await loyaltyService.saveStampLevel({
-        nivel_sello: parseInt(stampCountInput, 10),
-        imagen_url: imageUrlInput.trim()
-      });
+      await loyaltyService.uploadStampImage(file, count);
+      setMsg(`¡Imagen para ${count === 0 ? 'Estado Inicial' : `${count} Sello(s)`} subida a ImgBB con éxito!`);
+      setTimeout(() => setMsg(null), 3500);
+      await fetchData();
+    } catch (err) {
+      console.error('Error al subir imagen a ImgBB:', err);
+      alert('Error al subir la imagen a ImgBB: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setUploadingCount(null);
+      e.target.value = '';
+    }
+  };
+
+  const handleSaveStampImage = async (e) => {
+    e.preventDefault();
+    if (!imageUrlInput.trim() && !selectedFile) {
+      alert("Proporciona una imagen o una URL válida de ImgBB.");
+      return;
+    }
+
+    setUploadingCount(stampCountInput);
+    try {
+      if (selectedFile) {
+        await loyaltyService.uploadStampImage(selectedFile, stampCountInput);
+      } else {
+        await loyaltyService.saveStampLevel({
+          nivel_sello: parseInt(stampCountInput, 10),
+          imagen_url: imageUrlInput.trim()
+        });
+      }
       setEditingStamp(null);
       setImageUrlInput('');
-      setMsg("¡Imagen de sello guardada!");
-      setTimeout(() => setMsg(null), 3000);
-      fetchData();
+      setSelectedFile(null);
+      setFilePreview(null);
+      setMsg(`¡Imagen para ${stampCountInput === 0 ? 'Estado Inicial' : `${stampCountInput} Sello(s)`} guardada con éxito!`);
+      setTimeout(() => setMsg(null), 3500);
+      await fetchData();
     } catch (err) {
-      alert("Error al guardar la imagen.");
+      console.error("Error al guardar imagen de sello:", err);
+      alert("Error al guardar la imagen: " + (err.response?.data?.detail || err.message));
+    } finally {
+      setUploadingCount(null);
     }
   };
 
@@ -665,23 +708,145 @@ export const AdminLoyaltyView = () => {
         {editingStamp !== null && (
           <form onSubmit={handleSaveStampImage} style={{
             background: '#FAF7F2',
-            padding: '16px',
-            borderRadius: '12px',
+            padding: '18px',
+            borderRadius: '14px',
             border: '2px solid #788C5A',
-            marginBottom: '16px'
+            marginBottom: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px'
           }}>
-            <h4 style={{ margin: '0 0 10px 0', color: '#734F2F' }}>Editar URL de Imagen ImgBB para {stampCountInput} Sello(s)</h4>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h4 style={{ margin: 0, color: '#734F2F', fontSize: '1rem' }}>
+                Configurar Imagen para {stampCountInput === 0 ? 'Estado Inicial (0 Sellos)' : `${stampCountInput} Sello(s)`}
+              </h4>
+              <button 
+                type="button" 
+                className="btn btn-outline" 
+                style={{ padding: '4px 10px', fontSize: '0.75rem' }} 
+                onClick={() => {
+                  setEditingStamp(null);
+                  setSelectedFile(null);
+                  setFilePreview(null);
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
+
+            {/* Zona de Selección de Archivo para ImgBB */}
+            <div style={{
+              border: '2px dashed #788C5A',
+              borderRadius: '12px',
+              padding: '16px',
+              textAlign: 'center',
+              background: '#FFF',
+              position: 'relative',
+              cursor: 'pointer'
+            }}>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setSelectedFile(file);
+                    setFilePreview(URL.createObjectURL(file));
+                  }
+                }}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  opacity: 0,
+                  cursor: 'pointer'
+                }}
+              />
+              {filePreview ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center' }}>
+                  <img
+                    src={filePreview}
+                    alt="Previsualización"
+                    style={{ width: '64px', height: '64px', objectFit: 'contain', borderRadius: '8px', border: '1px solid #D5C8B5', background: '#FAF7F2' }}
+                  />
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#4A331E' }}>
+                      {selectedFile ? selectedFile.name : 'Imagen asignada'}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#788C5A', marginTop: '2px' }}>
+                      Lista para subir directamente a ImgBB Cloud
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: '#999', textDecoration: 'underline' }}>
+                      Haz clic para cambiar archivo
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: '6px' }}>
+                  <UploadCloud size={28} color="#788C5A" style={{ margin: '0 auto 6px', display: 'block' }} />
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#4A331E' }}>
+                    Seleccionar imagen desde tu equipo (JPG, PNG, WebP)
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '2px' }}>
+                    Se subirá y alojará automáticamente en la nube de ImgBB
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Opción alternativa: Pegar URL manual */}
+            <div>
+              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#7E6B5A', marginBottom: '4px', display: 'block' }}>
+                O ingresar enlace web directo (URL de ImgBB):
+              </label>
               <input
                 type="url"
                 placeholder="https://i.ibb.co/ejemplo.png"
                 value={imageUrlInput}
-                onChange={(e) => setImageUrlInput(e.target.value)}
-                style={{ flex: 1 }}
-                required
+                onChange={(e) => {
+                  setImageUrlInput(e.target.value);
+                  if (e.target.value) {
+                    setFilePreview(e.target.value);
+                    setSelectedFile(null);
+                  }
+                }}
+                style={{ width: '100%' }}
               />
-              <button type="submit" className="btn btn-primary" style={{ padding: '8px 16px' }}>Guardar URL</button>
-              <button type="button" className="btn btn-outline" style={{ padding: '8px 16px' }} onClick={() => setEditingStamp(null)}>Cancelar</button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '6px' }}>
+              <button 
+                type="button" 
+                className="btn btn-outline" 
+                style={{ padding: '8px 16px' }} 
+                onClick={() => {
+                  setEditingStamp(null);
+                  setSelectedFile(null);
+                  setFilePreview(null);
+                }}
+              >
+                Cancelar
+              </button>
+              <button 
+                type="submit" 
+                className="btn btn-primary" 
+                style={{ padding: '8px 20px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                disabled={uploadingCount !== null}
+              >
+                {uploadingCount !== null ? (
+                  <>
+                    <RefreshCw size={14} className="spin" style={{ animation: 'spin 1s linear infinite' }} />
+                    <span>Subiendo a ImgBB...</span>
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud size={16} />
+                    <span>Guardar y Aplicar Imagen</span>
+                  </>
+                )}
+              </button>
             </div>
           </form>
         )}
@@ -744,16 +909,66 @@ export const AdminLoyaltyView = () => {
                   {stampName}
                 </div>
 
+                {/* Subida Directa con ImgBB por tarjeta */}
+                <input
+                  type="file"
+                  id={`stamp-file-${count}`}
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => handleDirectCardUpload(e, count)}
+                  disabled={uploadingCount === count}
+                />
+                <label
+                  htmlFor={`stamp-file-${count}`}
+                  className="btn btn-primary"
+                  style={{
+                    width: '100%',
+                    padding: '7px 10px',
+                    fontSize: '0.75rem',
+                    cursor: uploadingCount === count ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    margin: 0,
+                    background: '#788C5A',
+                    color: '#FFF',
+                    borderRadius: '8px'
+                  }}
+                >
+                  {uploadingCount === count ? (
+                    <>
+                      <RefreshCw size={13} className="spin" style={{ animation: 'spin 1s linear infinite' }} />
+                      <span>Subiendo a ImgBB...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud size={14} />
+                      <span>{currentUrl ? 'Subir Nueva Imagen' : 'Subir Imagen a ImgBB'}</span>
+                    </>
+                  )}
+                </label>
+
                 <button
-                  className="btn btn-outline"
-                  style={{ width: '100%', padding: '6px', fontSize: '0.75rem' }}
+                  type="button"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#734F2F',
+                    fontSize: '0.7rem',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    padding: '2px'
+                  }}
                   onClick={() => {
                     setEditingStamp(count);
                     setStampCountInput(count);
                     setImageUrlInput(currentUrl || '');
+                    setSelectedFile(null);
+                    setFilePreview(currentUrl || null);
                   }}
                 >
-                  {currentUrl ? 'Cambiar Imagen ImgBB' : '+ Configurar URL ImgBB'}
+                  O pegar URL manual
                 </button>
               </div>
             );

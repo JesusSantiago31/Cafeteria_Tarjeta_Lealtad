@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, UploadFile, File, Form, HTTPException
 
 from app.models.loyalty import (
     PointsRuleCreate, PointsRuleUpdate, PointsRuleResponse,
@@ -7,6 +7,7 @@ from app.models.loyalty import (
     StampLevelCreate, StampLevelResponse
 )
 from app.services.loyalty_service import loyalty_service
+from app.services.imgbb_service import imgbb_service
 
 router = APIRouter(prefix="/loyalty", tags=["Loyalty Config"])
 
@@ -66,6 +67,55 @@ def get_stamp_levels():
 @router.post("/stamp-levels", response_model=StampLevelResponse)
 def create_or_update_stamp_level(level_data: StampLevelCreate):
     return loyalty_service.create_or_update_stamp_level(level_data)
+
+@router.post("/stamp-levels/upload-image")
+async def upload_stamp_image(
+    file: UploadFile = File(...),
+    stamp_count: int = Form(...)
+):
+    """Upload stamp image directly to ImgBB and update the stamp configuration."""
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El archivo debe ser una imagen válida (PNG, JPG, WebP)."
+        )
+
+    contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La imagen no debe superar los 10 MB."
+        )
+
+    res = imgbb_service.upload_file(
+        file_content=contents,
+        filename=file.filename or f"stamp_{stamp_count}.png",
+        content_type=file.content_type or "image/png"
+    )
+
+    image_url = res.get("imagen_url")
+    if not image_url:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No se pudo subir la imagen a ImgBB."
+        )
+
+    updated_level = loyalty_service.create_or_update_stamp_level(
+        StampLevelCreate(
+            nivel_sello=stamp_count,
+            imagen_url=image_url,
+            nombre_sello=f"{stamp_count} Sello(s)" if stamp_count > 0 else "Estado Inicial (0 Sellos)",
+            descripcion_beneficio=f"Tarjeta con {stamp_count} sellos"
+        )
+    )
+
+    return {
+        "success": True,
+        "stamp_count": stamp_count,
+        "imagen_url": image_url,
+        "source": res.get("source"),
+        "level": updated_level
+    }
 
 @router.delete("/stamp-levels/{nivel_sello}", status_code=status.HTTP_200_OK)
 def delete_stamp_level(nivel_sello: int):
