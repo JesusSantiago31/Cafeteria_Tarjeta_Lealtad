@@ -289,7 +289,7 @@ class GoogleWalletService:
                 "subheader": {
                     "defaultValue": {
                         "language": "es-419",
-                        "value": settings.CAFETERIA_SUBHEADER
+                        "value": full_name
                     }
                 },
                 "locations": locations
@@ -318,11 +318,16 @@ class GoogleWalletService:
                 },
                 "logo": generic_class["logo"],
                 "cardTitle": generic_class["cardTitle"],
-                "subheader": generic_class["subheader"],
-                "header": {
+                "subheader": {
                     "defaultValue": {
                         "language": "es-419",
                         "value": full_name
+                    }
+                },
+                "header": {
+                    "defaultValue": {
+                        "language": "es-419",
+                        "value": settings.CAFETERIA_SUBHEADER or "Tarjeta de Lealtad"
                     }
                 },
                 "hexBackgroundColor": settings.CAFETERIA_BG_COLOR,
