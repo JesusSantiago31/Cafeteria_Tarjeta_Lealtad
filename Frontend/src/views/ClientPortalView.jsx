@@ -122,30 +122,20 @@ export function ClientPortalView() {
     if (!registeredClient) return;
     setLoadingWallet(true);
 
-    // Abrir ventana ANTES del await para evitar bloqueo de popup en móvil
-    const walletWindow = window.open('', '_blank', 'noopener,noreferrer');
-
     try {
       const uId = registeredClient.id || registeredClient.phone || registeredClient.phone_number;
       if (!uId) {
-        if (walletWindow) walletWindow.close();
         alert("No se pudo identificar al cliente para generar el pase.");
         return;
       }
       const data = await userService.getGoogleWalletPass(uId);
       if (data && data.save_url) {
-        if (walletWindow && !walletWindow.closed) {
-          walletWindow.location.href = data.save_url;
-        } else {
-          // Fallback: redirigir en la misma pestaña si la ventana fue bloqueada
-          window.location.href = data.save_url;
-        }
+        // Redirige directamente: en Android abre la app nativa de Google Wallet al instante sin abrir pestañas about:blank
+        window.location.href = data.save_url;
       } else {
-        if (walletWindow) walletWindow.close();
         alert("No se pudo obtener el enlace del pase de Google Wallet.");
       }
     } catch (err) {
-      if (walletWindow) walletWindow.close();
       console.error("Error al obtener pase de Google Wallet:", err);
       alert("Error al conectar con Google Wallet. Por favor reintenta.");
     } finally {
