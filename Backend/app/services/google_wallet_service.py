@@ -137,8 +137,6 @@ class GoogleWalletService:
             }
 
         social_links = []
-        if terminos_url:
-            social_links.append({"uri": terminos_url, "description": "Términos y Condiciones", "id": "link_terms"})
         if instagram_url:
             social_links.append({"uri": instagram_url, "description": "Instagram", "id": "link_ig"})
         if facebook_url:
