@@ -197,13 +197,8 @@ class GoogleWalletService:
             }
         ]
 
-        messages = [
-            {
-                "id": f"msg_welcome_{int(time.time())}",
-                "header": "¡Bienvenido a Margaritas Cafe!",
-                "body": f"¡Hola {user.get('first_name', 'Cliente')}! Tienes {stamps} de {max_stamps} sellos y {points} pts en tu tarjeta de Lealtad."
-            }
-        ]
+        # No enviar mensajes de bienvenida al agregar el pase; solo notificaciones de compra/sellos o promoción diaria
+        messages = []
 
         now = int(time.time())
 
