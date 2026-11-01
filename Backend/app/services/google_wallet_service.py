@@ -87,7 +87,10 @@ class GoogleWalletService:
         purchases_count = user.get("total_purchases_count", 0)
         total_earned = user.get("total_points_earned", 0)
 
-        raw_class_id = (settings.GOOGLE_CLASS_ID or "cafeteria_generic_v6").strip().strip('"').strip("'")
+        raw_class_id = (settings.GOOGLE_CLASS_ID or "MARGARITAS_CAFE").strip().strip('"').strip("'")
+        if "MARGARITAS_GENERIC" in raw_class_id or raw_class_id in ("cafeteria_generic_v6", "", "None"):
+            raw_class_id = "MARGARITAS_CAFE"
+
         if "." in raw_class_id:
             class_id = raw_class_id
             clean_class_slug = re.sub(r'[^a-zA-Z0-9_]', '_', raw_class_id.split(".")[-1])
@@ -212,6 +215,9 @@ class GoogleWalletService:
                 "state": "ACTIVE",
                 "accountId": phone_raw,
                 "accountName": full_name,
+                "passConstraints": {
+                    "screenshotEligibility": "INELIGIBLE"
+                },
                 "loyaltyPoints": {
                     "label": "Puntos Disponibles",
                     "balance": {
@@ -307,6 +313,9 @@ class GoogleWalletService:
                 "id": pass_id,
                 "classId": class_id,
                 "state": "ACTIVE",
+                "passConstraints": {
+                    "screenshotEligibility": "INELIGIBLE"
+                },
                 "logo": generic_class["logo"],
                 "cardTitle": generic_class["cardTitle"],
                 "subheader": generic_class["subheader"],
@@ -392,7 +401,9 @@ class GoogleWalletService:
         purchases_count = user.get("total_purchases_count", 0)
         hero_url = user.get("wallet_hero_image_url") or settings.CAFETERIA_HERO_IMAGE_URL
 
-        raw_class_id = (settings.GOOGLE_CLASS_ID or "cafeteria_generic_v6").strip().strip('"').strip("'")
+        raw_class_id = (settings.GOOGLE_CLASS_ID or "MARGARITAS_CAFE").strip().strip('"').strip("'")
+        if "MARGARITAS_GENERIC" in raw_class_id or raw_class_id in ("cafeteria_generic_v6", "", "None"):
+            raw_class_id = "MARGARITAS_CAFE"
         clean_class_slug = re.sub(r'[^a-zA-Z0-9_]', '_', raw_class_id.split(".")[-1] if "." in raw_class_id else raw_class_id)
         class_id = raw_class_id if "." in raw_class_id else f"{self.issuer_id}.{raw_class_id}"
 
@@ -430,6 +441,9 @@ class GoogleWalletService:
                     patch_url = f"https://walletobjects.googleapis.com/walletobjects/v1/loyaltyObject/{pass_id}"
                     loyalty_patch: Dict[str, Any] = {
                         "hexBackgroundColor": settings.CAFETERIA_BG_COLOR,
+                        "passConstraints": {
+                            "screenshotEligibility": "INELIGIBLE"
+                        },
                         "merchantLocations": merchant_locations,
                         "locations": locations,
                         "loyaltyPoints": {
@@ -528,6 +542,9 @@ class GoogleWalletService:
                     patch_url = f"https://walletobjects.googleapis.com/walletobjects/v1/genericObject/{pass_id}"
                     updated_object = {
                         "hexBackgroundColor": settings.CAFETERIA_BG_COLOR,
+                        "passConstraints": {
+                            "screenshotEligibility": "INELIGIBLE"
+                        },
                         "locations": locations,
                         "messages": [
                             {
@@ -640,7 +657,9 @@ class GoogleWalletService:
             "messageType": "TEXT_AND_NOTIFY"
         }
         
-        raw_class_id = (settings.GOOGLE_CLASS_ID or "cafeteria_generic_v6").strip().strip('"').strip("'")
+        raw_class_id = (settings.GOOGLE_CLASS_ID or "MARGARITAS_CAFE").strip().strip('"').strip("'")
+        if "MARGARITAS_GENERIC" in raw_class_id or raw_class_id in ("cafeteria_generic_v6", "", "None"):
+            raw_class_id = "MARGARITAS_CAFE"
         class_id = raw_class_id if "." in raw_class_id else f"{self.issuer_id}.{raw_class_id}"
         
         print(f"[GoogleWalletService] Broadcasting push notification to Class '{class_id}': '{header}' - '{body}'")
